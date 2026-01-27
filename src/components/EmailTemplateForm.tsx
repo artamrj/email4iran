@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import * as z from 'zod';
 import { ChevronDown, XCircle } from 'lucide-react';
@@ -85,13 +85,43 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   totalTemplates,
   allowRemoveExisting = true,
 }) => {
-  const { control, watch } = useFormContext<z.infer<typeof contactsFormSchema>>();
+  const { control, watch, getValues, setValue } = useFormContext<z.infer<typeof contactsFormSchema>>();
   const [isOpen, setIsOpen] = useState(templateIndex === 0); // Open the first template by default
+  const [activeField, setActiveField] = useState<"subject" | "body">("subject");
+  const subjectRef = useRef<HTMLInputElement | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   const currentLanguage = watch(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailLanguage`);
   const languageLabel = languages.find(lang => lang.value === currentLanguage)?.label || 'New Template';
   const templateId = watch(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.templateId`);
   const canRemoveTemplate = totalTemplates > 1 && (allowRemoveExisting || !templateId);
+
+  const insertPlaceholder = (
+    fieldPath: string,
+    placeholder: string,
+    element: HTMLInputElement | HTMLTextAreaElement | null,
+  ) => {
+    const currentValue = getValues(fieldPath) ?? '';
+
+    if (!element) {
+      const trimmed = currentValue.trim();
+      const nextValue = trimmed ? `${trimmed} ${placeholder}` : placeholder;
+      setValue(fieldPath, nextValue, { shouldDirty: true, shouldTouch: true });
+      return;
+    }
+
+    const start = element.selectionStart ?? currentValue.length;
+    const end = element.selectionEnd ?? currentValue.length;
+    const nextValue =
+      currentValue.slice(0, start) + placeholder + currentValue.slice(end);
+    setValue(fieldPath, nextValue, { shouldDirty: true, shouldTouch: true });
+
+    requestAnimationFrame(() => {
+      element.focus();
+      const cursor = start + placeholder.length;
+      element.setSelectionRange(cursor, cursor);
+    });
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative border border-border rounded-lg p-4 bg-card/30">
@@ -121,6 +151,60 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent className="grid gap-4 pt-4">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>Insert into {activeField === "subject" ? "subject" : "body"}:</span>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-7 rounded-full px-3 text-xs"
+            onClick={() =>
+              insertPlaceholder(
+                activeField === "subject"
+                  ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
+                  : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                "{{name}}",
+                activeField === "subject" ? subjectRef.current : bodyRef.current,
+              )
+            }
+          >
+            {"{{name}}"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-7 rounded-full px-3 text-xs"
+            onClick={() =>
+              insertPlaceholder(
+                activeField === "subject"
+                  ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
+                  : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                "{{city}}",
+                activeField === "subject" ? subjectRef.current : bodyRef.current,
+              )
+            }
+          >
+            {"{{city}}"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-7 rounded-full px-3 text-xs"
+            onClick={() =>
+              insertPlaceholder(
+                activeField === "subject"
+                  ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
+                  : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                "{{country}}",
+                activeField === "subject" ? subjectRef.current : bodyRef.current,
+              )
+            }
+          >
+            {"{{country}}"}
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <FormField
             control={control}
@@ -153,7 +237,16 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Subject</FormLabel>
                 <FormControl>
-                  <Input placeholder="Regarding the recent events in {{city}}" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  <Input
+                    placeholder="Regarding the recent events in {{city}}"
+                    className="rounded-lg border-border bg-input text-foreground"
+                    {...field}
+                    ref={(node) => {
+                      field.ref(node);
+                      subjectRef.current = node;
+                    }}
+                    onFocus={() => setActiveField("subject")}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -167,7 +260,17 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
             <FormItem className="mb-2">
               <FormLabel className="text-sm font-medium text-foreground">Body</FormLabel>
               <FormControl>
-                <Textarea placeholder="Dear {{name}}, I am writing to express my concern..." rows={6} className="rounded-lg border-border bg-input text-foreground" {...field} />
+                <Textarea
+                  placeholder="Dear {{name}}, I am writing to express my concern..."
+                  rows={6}
+                  className="rounded-lg border-border bg-input text-foreground"
+                  {...field}
+                  ref={(node) => {
+                    field.ref(node);
+                    bodyRef.current = node;
+                  }}
+                  onFocus={() => setActiveField("body")}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
