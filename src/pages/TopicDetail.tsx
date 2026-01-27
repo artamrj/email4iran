@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MadeWithDyad } from "@/components/made-with-dyad"; // Added import
+import { MadeWithDyad } from "@/components/made-with-dyad";
 
 interface Personalization {
   name: string;
@@ -107,7 +107,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
 
   if (isLoadingTemplates) {
     return (
-      <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
+      <Card className="rounded-xl shadow-md border-none bg-muted p-4 flex flex-col justify-between h-full">
         <Skeleton className="h-6 w-3/4 mb-2 rounded-md" />
         <Skeleton className="h-4 w-1/2 mb-4 rounded-md" />
         <Skeleton className="h-10 w-full rounded-lg" />
@@ -116,65 +116,65 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
   }
 
   return (
-    <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
+    <Card className="rounded-xl shadow-md border-none bg-card text-card-foreground p-4 flex flex-col justify-between h-full">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">{contact.flag}</span>
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
+          <CardTitle className="text-lg font-semibold text-foreground leading-tight">
             {contact.name}
           </CardTitle>
         </div>
-        <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+        <CardDescription className="text-sm text-muted-foreground">
           {contact.title} ({contact.country})
         </CardDescription>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           {contact.email}
         </p>
       </CardHeader>
       <CardContent className="p-0 flex-grow flex items-end">
-        <div className="flex flex-wrap gap-1 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
           Languages: {contact.languages.join(', ').toUpperCase()}
         </div>
       </CardContent>
       <CardFooter className="p-0 pt-4 flex flex-col sm:flex-row gap-2">
         <Button
           onClick={handleSendRecommendedEmail}
-          className="w-full sm:w-auto flex-grow rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-3"
+          className="w-full sm:w-auto flex-grow rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"
           disabled={!subject || !body}
         >
           <Mail className="mr-2 h-4 w-4" /> Send Recommended
         </Button>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-auto flex-grow rounded-lg border-purple-600 text-purple-600 hover:bg-purple-50 dark:border-purple-400 dark:text-purple-400 dark:hover:bg-gray-700 text-sm py-2 px-3">
+            <Button variant="outline" className="w-full sm:w-auto flex-grow rounded-lg text-sm py-2 px-3">
               <ExternalLink className="mr-2 h-4 w-4" /> Customize
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] rounded-xl p-6">
+          <DialogContent className="sm:max-w-[425px] rounded-xl p-6 bg-card text-card-foreground">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">Customize Email</DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-gray-400">
+              <DialogTitle className="text-2xl font-bold text-foreground">Customize Email</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
                 Edit the subject and body before sending.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="subject" className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
+                <Label htmlFor="subject" className="text-sm font-medium text-muted-foreground">Subject</Label>
                 <Input
                   id="subject"
                   value={subject}
                   onChange={(e) => { /* In a real app, you might manage this state */ }}
-                  className="rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="rounded-lg border-input bg-background text-foreground"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="body" className="text-sm font-medium text-gray-700 dark:text-gray-300">Body</Label>
+                <Label htmlFor="body" className="text-sm font-medium text-muted-foreground">Body</Label>
                 <Textarea
                   id="body"
                   value={body}
                   onChange={(e) => { /* In a real app, you might manage this state */ }}
                   rows={10}
-                  className="rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="rounded-lg border-input bg-background text-foreground"
                 />
               </div>
             </div>
@@ -185,7 +185,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                   const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                   window.location.href = mailtoLink;
                 }}
-                className="w-full sm:w-auto rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-3"
+                className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"
                 disabled={!subject || !body}
               >
                 <Mail className="mr-2 h-4 w-4" /> Open Email App
@@ -194,7 +194,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                 type="button"
                 variant="outline"
                 onClick={handleCopyEmail}
-                className="w-full sm:w-auto rounded-lg border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700 text-sm py-2 px-3"
+                className="w-full sm:w-auto rounded-lg text-sm py-2 px-3"
                 disabled={!subject || !body}
               >
                 <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
@@ -275,29 +275,29 @@ const TopicDetail = () => {
 
   if (isLoadingTopic || isLoadingCategories || isLoadingContacts) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-950 dark:to-gray-900 p-4 sm:p-8">
+      <div className="min-h-screen flex flex-col bg-background text-foreground p-4 sm:p-8">
         <div className="container mx-auto max-w-6xl py-8">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 rounded-full text-muted-foreground hover:bg-accent">
             <ArrowLeft className="mr-2 h-5 w-5" /> Back
           </Button>
-          <Skeleton className="h-12 w-3/4 mb-2 rounded-md" />
-          <Skeleton className="h-6 w-1/2 mb-4 rounded-md" />
-          <Skeleton className="h-4 w-1/4 mb-8 rounded-md" />
+          <Skeleton className="h-12 w-3/4 mb-2 rounded-md bg-muted" />
+          <Skeleton className="h-6 w-1/2 mb-4 rounded-md bg-muted" />
+          <Skeleton className="h-4 w-1/4 mb-8 rounded-md bg-muted" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Skeleton className="h-48 w-full rounded-xl mb-8" />
-              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl mb-8 bg-muted" />
+              <Skeleton className="h-32 w-full rounded-xl bg-muted" />
             </div>
             <div className="lg:col-span-1">
-              <Skeleton className="h-64 w-full rounded-xl" />
+              <Skeleton className="h-64 w-full rounded-xl bg-muted" />
             </div>
           </div>
           <div className="mt-12">
-            <Skeleton className="h-8 w-1/3 mb-6 rounded-md" />
+            <Skeleton className="h-8 w-1/3 mb-6 rounded-md bg-muted" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-48 w-full rounded-xl" />
+                <Skeleton key={i} className="h-48 w-full rounded-xl bg-muted" />
               ))}
             </div>
           </div>
@@ -315,88 +315,88 @@ const TopicDetail = () => {
   document.querySelector('meta[name="description"]')?.setAttribute('content', topic.metaPageDescription || topic.shortDescription);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-950 dark:to-gray-900 p-4 sm:p-8">
+    <div className="min-h-screen flex flex-col bg-background text-foreground p-4 sm:p-8">
       <div className="container mx-auto max-w-6xl py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="rounded-full text-muted-foreground hover:bg-accent">
             <ArrowLeft className="mr-2 h-5 w-5" /> Back to Topics
           </Button>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 leading-tight">
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-2 leading-tight">
           {topic.title}
         </h1>
-        <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-4">
+        <p className="text-lg sm:text-xl text-muted-foreground mb-4">
           {topic.shortDescription}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+        <p className="text-sm text-muted-foreground mb-8">
           Last updated: {format(new Date(topic.lastUpdated), 'PPP')}
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Topic Context Block */}
-          <Card className="lg:col-span-2 rounded-xl shadow-lg border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6">
+          <Card className="lg:col-span-2 rounded-xl shadow-lg border-none bg-card text-card-foreground p-6">
             <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Context</CardTitle>
+              <CardTitle className="text-2xl font-bold text-foreground">Context</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
+            <CardContent className="p-0 prose dark:prose-invert max-w-none text-foreground">
               <MarkdownRenderer content={topic.longDescription} />
             </CardContent>
           </Card>
 
           {/* Personalization Panel */}
-          <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-6">
+          <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-card text-card-foreground p-6">
             <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Personalize Your Message</CardTitle>
+              <CardTitle className="text-2xl font-bold text-foreground">Personalize Your Message</CardTitle>
             </CardHeader>
             <CardContent className="p-0 grid gap-4">
               <div>
-                <Label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</Label>
+                <Label htmlFor="name" className="text-sm font-medium text-muted-foreground">Your Name</Label>
                 <Input
                   id="name"
                   value={personalization.name}
                   onChange={(e) => setPersonalization({ ...personalization, name: e.target.value })}
                   placeholder="John Doe"
-                  className="rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="rounded-lg border-input bg-background text-foreground"
                 />
               </div>
               <div>
-                <Label htmlFor="city" className="text-sm font-medium text-gray-700 dark:text-gray-300">Your City (Optional)</Label>
+                <Label htmlFor="city" className="text-sm font-medium text-muted-foreground">Your City (Optional)</Label>
                 <Input
                   id="city"
                   value={personalization.city}
                   onChange={(e) => setPersonalization({ ...personalization, city: e.target.value })}
                   placeholder="New York"
-                  className="rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="rounded-lg border-input bg-background text-foreground"
                 />
               </div>
               <div>
-                <Label htmlFor="country" className="text-sm font-medium text-gray-700 dark:text-gray-300">Your Country (Optional)</Label>
+                <Label htmlFor="country" className="text-sm font-medium text-muted-foreground">Your Country (Optional)</Label>
                 <Input
                   id="country"
                   value={personalization.country}
                   onChange={(e) => setPersonalization({ ...personalization, country: e.target.value })}
                   placeholder="USA"
-                  className="rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="rounded-lg border-input bg-background text-foreground"
                 />
               </div>
               <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="always-english" className="text-sm font-medium text-gray-700 dark:text-gray-300">Always use English</Label>
+                <Label htmlFor="always-english" className="text-sm font-medium text-muted-foreground">Always use English</Label>
                 <Switch
                   id="always-english"
                   checked={personalization.alwaysUseEnglish}
                   onCheckedChange={(checked) => setPersonalization({ ...personalization, alwaysUseEnglish: checked })}
-                  className="data-[state=checked]:bg-purple-600 data-[state=unchecked]:bg-gray-300 dark:data-[state=unchecked]:bg-gray-600"
+                  className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
                 />
               </div>
               <Button
                 onClick={handleCopyAllEmails}
-                className="w-full rounded-lg bg-green-600 hover:bg-green-700 text-white text-base py-3 mt-4"
+                className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3 mt-4"
               >
                 <Copy className="mr-2 h-5 w-5" /> Copy All Emails
               </Button>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Your personalization details are used to customize email templates and are not stored.
               </p>
             </CardContent>
@@ -405,26 +405,26 @@ const TopicDetail = () => {
 
         {/* Categories & Contacts */}
         <div className="mt-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Contacts</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-6">Key Contacts</h2>
           {categories?.map((category) => (
             <div key={category.id} className="mb-10">
-              <h3 className="text-2xl font-semibold text-purple-800 dark:text-purple-300 mb-4">
+              <h3 className="text-2xl font-semibold text-primary mb-4">
                 {category.name}
               </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-6">{category.description}</p>
+              <p className="text-muted-foreground mb-6">{category.description}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {contactsByCategory?.[category.id]?.map((contact) => (
                   <ContactCard key={contact.id} contact={contact} personalization={personalization} />
                 ))}
               </div>
-              <Separator className="my-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
+              <Separator className="my-8 bg-border rounded-full" />
             </div>
           ))}
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="w-full py-6 text-center text-gray-600 dark:text-gray-400 text-sm mt-auto">
+      <footer className="w-full py-6 text-center text-muted-foreground text-sm mt-auto">
         <p>&copy; {new Date().getFullYear()} Advocacy Campaign App. All rights reserved.</p>
         <MadeWithDyad />
       </footer>
