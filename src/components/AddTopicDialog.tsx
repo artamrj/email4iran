@@ -280,7 +280,7 @@ export const AddTopicDialog: React.FC = () => {
         </TooltipTrigger>
         {!hasPasswordConfigured && (
           <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
-            <p>Please set `VITE_ADD_TOPIC_PASSWORD` in your Cloudflare environment variables to enable this feature.</p>
+            <p>Please set `VITE_ADD_TOPIC_PASSWORD` in your .env file to enable this feature.</p>
           </TooltipContent>
         )}
       </Tooltip>
