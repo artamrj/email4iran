@@ -74,8 +74,7 @@ const Index = () => {
           Email4Iran
         </h1>
         <p className="text-xl text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Explore various topics and make your voice heard by sending emails to
-          key contacts.
+          Uncover vital causes and transform your passion into action. Engage directly with key contacts to drive change.
         </p>
 
         {isLoading ? (
