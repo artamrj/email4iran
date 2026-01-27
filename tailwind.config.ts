@@ -62,6 +62,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Custom Iranian flag colors
+        'iran-green': 'hsl(var(--iran-green))',
+        'iran-red': 'hsl(var(--iran-red))',
+        'iran-white': 'hsl(var(--iran-white))',
+        'iran-dark-green': 'hsl(var(--iran-dark-green))',
+        'iran-dark-red': 'hsl(var(--iran-dark-red))',
+        'iran-dark-white': 'hsl(var(--iran-dark-white))',
       },
       borderRadius: {
         lg: "var(--radius)",
