@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getTopics } from "@/services/supabaseService";
@@ -22,7 +23,11 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
       <Card className="h-full flex flex-col justify-between rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out border border-border bg-card text-card-foreground">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2 mb-1">
-            {topic.emoji && <span className="text-3xl">{topic.emoji}</span>}
+            {topic.emoji && (
+              <div className="rounded-[18px] bg-emerald-50/80 px-3 py-2 shadow-inner shadow-emerald-200/40">
+                <span className="text-3xl leading-tight">{topic.emoji}</span>
+              </div>
+            )}
             <CardTitle className="text-2xl font-extrabold text-primary leading-tight">
               {topic.name}
             </CardTitle>
@@ -84,12 +89,34 @@ const Index = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 sm:p-8 relative">
       <TopicControlPanel />
       <div className="container mx-auto max-w-6xl py-12">
-        <h1 className="text-5xl font-extrabold text-center mb-6 text-foreground drop-shadow-lg">
-          Email4Iran
-        </h1>
-        <p className="text-xl text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Uncover vital causes and transform your passion into action. Engage directly with key contacts to drive change.
-        </p>
+        <div className="relative mb-12 overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-b from-background via-background to-secondary/10 px-6 py-12 text-center sm:px-12">
+          <div className="pointer-events-none absolute -top-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-primary/10" />
+          <div className="pointer-events-none absolute -bottom-20 right-0 h-40 w-40 rounded-full bg-secondary/20" />
+          <div className="relative">
+            <div className="mx-auto mb-6 flex items-center justify-center">
+              <div className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.12)]">
+                <Image
+                  src="/lionandsun.png"
+                  alt="Lion and Sun emblem"
+                  width={120}
+                  height={120}
+                  priority
+                  className="h-12 w-auto sm:h-16"
+                />
+              </div>
+            </div>
+            <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+              irani.email
+            </div>
+            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-6xl">
+              Send the emails that move #FreeIran forward
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
+              Discover verified domains and key contacts, send faster with ready templates,
+              and turn small wins into unstoppable momentum for #IranRevolution2026.
+            </p>
+          </div>
+        </div>
         <div className="flex justify-center mb-8">
           <button
             type="button"
