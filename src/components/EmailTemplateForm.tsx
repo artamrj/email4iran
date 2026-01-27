@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { type FieldPath, useFormContext } from 'react-hook-form';
 import * as z from 'zod';
 import { ChevronDown, XCircle } from 'lucide-react';
 
@@ -84,6 +84,8 @@ const contactsFormSchema = z.object({
   groups: z.array(groupEntrySchema).min(1, { message: "At least one group is required." }),
 });
 
+type ContactsFormValues = z.infer<typeof contactsFormSchema>;
+
 interface EmailTemplateFormProps {
   groupIndex: number;
   contactIndex: number;
@@ -103,7 +105,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   totalTemplates,
   allowRemoveExisting = true,
 }) => {
-  const { control, watch, getValues, setValue } = useFormContext<z.infer<typeof contactsFormSchema>>();
+  const { control, watch, getValues, setValue } = useFormContext<ContactsFormValues>();
   const [isOpen, setIsOpen] = useState(templateIndex === 0); // Open the first template by default
   const [activeField, setActiveField] = useState<"subject" | "body">("subject");
   const subjectRef = useRef<HTMLInputElement | null>(null);
@@ -115,7 +117,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   const canRemoveTemplate = totalTemplates > 1 && (allowRemoveExisting || !templateId);
 
   const insertPlaceholder = (
-    fieldPath: string,
+    fieldPath: FieldPath<ContactsFormValues>,
     placeholder: string,
     element: HTMLInputElement | HTMLTextAreaElement | null,
   ) => {
@@ -224,9 +226,9 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
               className="h-7 rounded-full px-3 text-xs border-dashed"
               onClick={() =>
                 insertPlaceholder(
-                  activeField === "subject"
+                  (activeField === "subject"
                     ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
-                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`) as FieldPath<ContactsFormValues>,
                   "{{name}}",
                   activeField === "subject" ? subjectRef.current : bodyRef.current,
                 )
@@ -241,9 +243,9 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
               className="h-7 rounded-full px-3 text-xs border-dashed"
               onClick={() =>
                 insertPlaceholder(
-                  activeField === "subject"
+                  (activeField === "subject"
                     ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
-                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`) as FieldPath<ContactsFormValues>,
                   "{{city}}",
                   activeField === "subject" ? subjectRef.current : bodyRef.current,
                 )
@@ -258,9 +260,9 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
               className="h-7 rounded-full px-3 text-xs border-dashed"
               onClick={() =>
                 insertPlaceholder(
-                  activeField === "subject"
+                  (activeField === "subject"
                     ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
-                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`) as FieldPath<ContactsFormValues>,
                   "{{country}}",
                   activeField === "subject" ? subjectRef.current : bodyRef.current,
                 )
