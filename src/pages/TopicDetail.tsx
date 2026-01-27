@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MadeWithDyad } from "@/components/made-with-dyad"; // Added import
+import { MadeWithDyad } from "@/components/made-with-dyad";
 
 interface Personalization {
   name: string;
@@ -115,17 +115,24 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
     );
   }
 
+  const isFlagUrl = contact.flag.startsWith('http') || contact.flag.startsWith('/');
+
   return (
     <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-2xl">{contact.flag}</span>
+          {isFlagUrl ? (
+            <img src={contact.flag} alt={`${contact.name} logo`} className="w-8 h-8 rounded-full object-cover" />
+          ) : (
+            <span className="text-2xl">{contact.flag}</span>
+          )}
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
             {contact.name}
           </CardTitle>
         </div>
         <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-          {contact.title} ({contact.country})
+          {contact.title}
+          {contact.country && ` (${contact.country})`}
         </CardDescription>
         <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
           {contact.email}
