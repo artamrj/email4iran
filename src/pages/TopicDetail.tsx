@@ -14,10 +14,8 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Mail, Copy, ExternalLink } from 'lucide-react';
-import { format } from 'date-fns';
 import { showSuccess, showError } from '@/utils/toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,7 +26,6 @@ interface Personalization {
   name: string;
   city: string;
   country: string;
-  alwaysUseEnglish: boolean;
 }
 
 const replacePlaceholders = (text: string, personalization: Personalization) => {
@@ -36,10 +33,6 @@ const replacePlaceholders = (text: string, personalization: Personalization) => 
   result = result.replace(/{{name}}/g, personalization.name || '').trim();
   result = result.replace(/{{city}}/g, personalization.city || '').trim();
   result = result.replace(/{{country}}/g, personalization.country || '').trim();
-
-  // Removed the line that filtered out empty lines to preserve all newlines
-  // result = result.split('\n').filter(line => line.trim() !== '').join('\n');
-
   return result;
 };
 
@@ -50,19 +43,22 @@ const getEmailBody = (
 ) => {
   let template: EmailTemplate | undefined;
 
-  if (personalization.alwaysUseEnglish) {
+  // Prioritize contact's specific languages (excluding 'en' for initial search)
+  for (const lang of contactLanguages) {
+    if (lang !== 'en') {
+      template = templates.find(t => t.language === lang);
+      if (template) break;
+    }
+  }
+
+  // Fallback to 'local' if no specific language match
+  if (!template) {
+    template = templates.find(t => t.language === 'local');
+  }
+
+  // Fallback to English if no other template found
+  if (!template) {
     template = templates.find(t => t.language === 'en');
-  } else {
-    // Try to find a local template matching contact's languages
-    template = templates.find(t => contactLanguages.includes(t.language) && t.language !== 'en');
-    if (!template) {
-      // Fallback to 'local' if no specific language match
-      template = templates.find(t => t.language === 'local');
-    }
-    if (!template) {
-      // Fallback to English if no local or specific language template found
-      template = templates.find(t => t.language === 'en');
-    }
   }
 
   if (!template) {
@@ -136,18 +132,19 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
             {contact.name}
           </CardTitle>
         </div>
-        <CardDescription className="text-sm text-muted-foreground truncate">
-          {contact.organization && `${contact.organization}, `}
+        <p className="text-sm text-muted-foreground truncate">
+          {contact.organization && `${contact.organization}`}
+          {contact.organization && contact.location && `, `}
           {contact.location && `${contact.location}`}
-        </CardDescription>
+        </p>
         <p className="text-xs text-muted-foreground mt-1 truncate">
           {contact.email}
         </p>
       </CardHeader>
       <CardContent className="p-0 flex-grow flex items-end">
-        <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-          Languages: {contact.languages.join(', ').toUpperCase()}
-        </div>
+        <p className="flex flex-wrap gap-1 text-xs font-medium text-muted-foreground">
+          Languages: <span className="font-semibold">{contact.languages.join(', ').toUpperCase()}</span>
+        </p>
       </CardContent>
       <CardFooter className="p-0 pt-4 flex flex-col sm:flex-row gap-2">
         <Button
@@ -182,6 +179,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                   id="subject"
                   value={customSubject}
                   onChange={(e) => setCustomSubject(e.target.value)}
+                  placeholder="Regarding the recent events in {{city}}"
                   className="rounded-lg border-border bg-input text-foreground"
                 />
               </div>
@@ -192,6 +190,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                   value={customBody}
                   onChange={(e) => setCustomBody(e.target.value)}
                   rows={10}
+                  placeholder="Dear {{name}}, I am writing to express my concern..."
                   className="rounded-lg border-border bg-input text-foreground"
                 />
               </div>
@@ -233,7 +232,6 @@ const TopicDetail = () => {
     name: '',
     city: '',
     country: '',
-    alwaysUseEnglish: false,
   });
 
   const { data: topic, isLoading: isLoadingTopic, isError: isErrorTopic } = useQuery<Topic | null>({
@@ -266,36 +264,6 @@ const TopicDetail = () => {
       navigate('/404');
     }
   }, [topic, isLoadingTopic, isErrorTopic, navigate]);
-
-  const handleCopyAllEmails = async () => {
-    if (!contactsByGroup || Object.keys(contactsByGroup).length === 0) {
-      showError('No contacts available to copy emails from.');
-      return;
-    }
-
-    const allEmails = new Set<string>();
-    for (const groupId in contactsByGroup) {
-      contactsByGroup[groupId].forEach(contact => {
-        // Split the email string by comma and add each trimmed email to the set
-        contact.email.split(',').forEach(email => {
-          const trimmedEmail = email.trim();
-          if (trimmedEmail) {
-            allEmails.add(trimmedEmail);
-          }
-        });
-      });
-    }
-
-    if (allEmails.size === 0) {
-      showError('No emails found to copy.');
-      return;
-    }
-
-    const emailString = Array.from(allEmails).join(','); // Changed to join with comma
-    navigator.clipboard.writeText(emailString)
-      .then(() => showSuccess('All unique contact emails copied to clipboard!'))
-      .catch(() => showError('Failed to copy emails.'));
-  };
 
   if (isLoadingTopic || isLoadingGroups || isLoadingContacts) {
     return (
@@ -368,6 +336,9 @@ const TopicDetail = () => {
           <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-card p-6">
             <CardHeader className="p-0 pb-4">
               <CardTitle className="text-2xl font-bold text-foreground">Personalize Your Message</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Enter your details to automatically customize email templates for contacts.
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-0 grid gap-4">
               <div>
@@ -400,21 +371,6 @@ const TopicDetail = () => {
                   className="rounded-lg border-border bg-input text-foreground"
                 />
               </div>
-              <div className="flex items-center justify-between space-x-2">
-                <Label htmlFor="always-english" className="text-sm font-medium text-foreground">Always use English</Label>
-                <Switch
-                  id="always-english"
-                  checked={personalization.alwaysUseEnglish}
-                  onCheckedChange={(checked) => setPersonalization({ ...personalization, alwaysUseEnglish: checked })}
-                  className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-secondary"
-                />
-              </div>
-              <Button
-                onClick={handleCopyAllEmails}
-                className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3 mt-4"
-              >
-                <Copy className="mr-2 h-5 w-5" /> Copy All Emails
-              </Button>
               <p className="text-xs text-muted-foreground mt-2">
                 Your personalization details are used to customize email templates and are not stored.
               </p>
