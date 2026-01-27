@@ -52,6 +52,31 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        iran: {
+          green: {
+            DEFAULT: "hsl(var(--iran-green))",
+            foreground: "hsl(var(--iran-green-foreground))",
+          },
+          white: {
+            DEFAULT: "hsl(var(--iran-white))",
+            foreground: "hsl(var(--iran-white-foreground))",
+          },
+          red: {
+            DEFAULT: "hsl(var(--iran-red))",
+            foreground: "hsl(var(--iran-red-foreground))",
+          },
+        },
+        // Custom colors for specific actions/elements
+        action: {
+          blue: {
+            DEFAULT: "hsl(var(--action-blue))",
+            foreground: "hsl(var(--action-blue-foreground))",
+          },
+          purple: {
+            DEFAULT: "hsl(var(--action-purple))",
+            foreground: "hsl(var(--action-purple-foreground))",
+          },
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
