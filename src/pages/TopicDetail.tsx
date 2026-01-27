@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -275,7 +277,7 @@ const TopicDetail = () => {
       return;
     }
 
-    const emailString = Array.from(allEmails).join('; ');
+    const emailString = Array.from(allEmails).join(','); // Changed to join with comma
     navigator.clipboard.writeText(emailString)
       .then(() => showSuccess('All unique contact emails copied to clipboard!'))
       .catch(() => showError('Failed to copy emails.'));

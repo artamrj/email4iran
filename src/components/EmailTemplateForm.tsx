@@ -45,7 +45,7 @@ const contactSchema = z.object({
       if (emails.length === 0) return false;
       return emails.every(email => z.string().email().safeParse(email).success);
     },
-    { message: "Invalid email format. Each email must be valid and separated by commas. Individual email addresses cannot contain commas." }
+    { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." }
   ),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
   emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
