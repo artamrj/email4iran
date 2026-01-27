@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTopicBySlug,
-  getGroupsByTopicId, // Changed function name
-  getContactsByGroupId, // Changed function name
+  getGroupsByTopicId,
+  getContactsByGroupId,
   getEmailTemplatesByContactId,
 } from '@/services/supabaseService';
-import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase'; // Updated import for Group
+import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,14 +119,14 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
     <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-2xl">{contact.emoji}</span> {/* Changed from contact.flag */}
+          <span className="text-2xl">{contact.emoji}</span>
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
             {contact.name}
           </CardTitle>
         </div>
         <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-          {contact.organization && `${contact.organization}, `} {/* New field */}
-          {contact.location && `${contact.location}`} {/* New field */}
+          {contact.organization && `${contact.organization}, `}
+          {contact.location && `${contact.location}`}
         </CardDescription>
         <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
           {contact.email}
@@ -225,19 +225,19 @@ const TopicDetail = () => {
     enabled: !!topicSlug,
   });
 
-  const { data: groups, isLoading: isLoadingGroups } = useQuery<Group[]>({ // Changed to groups
-    queryKey: ['groups', topic?.id], // Changed key
-    queryFn: () => getGroupsByTopicId(topic!.id), // Changed function name
+  const { data: groups, isLoading: isLoadingGroups } = useQuery<Group[]>({
+    queryKey: ['groups', topic?.id],
+    queryFn: () => getGroupsByTopicId(topic!.id),
     enabled: !!topic?.id,
   });
 
-  const { data: contactsByGroup, isLoading: isLoadingContacts } = useQuery<Record<string, Contact[]>>({ // Changed to contactsByGroup
-    queryKey: ['contactsByGroups', groups?.map(c => c.id)], // Changed key
+  const { data: contactsByGroup, isLoading: isLoadingContacts } = useQuery<Record<string, Contact[]>>({
+    queryKey: ['contactsByGroups', groups?.map(c => c.id)],
     queryFn: async () => {
       if (!groups) return {};
       const contactsMap: Record<string, Contact[]> = {};
-      for (const group of groups) { // Changed to group
-        contactsMap[group.id] = await getContactsByGroupId(group.id); // Changed function name
+      for (const group of groups) {
+        contactsMap[group.id] = await getContactsByGroupId(group.id);
       }
       return contactsMap;
     },
@@ -246,19 +246,19 @@ const TopicDetail = () => {
 
   useEffect(() => {
     if (!isLoadingTopic && !topic && !isErrorTopic) {
-      navigate('/404'); // Redirect to 404 if topic not found
+      navigate('/404');
     }
   }, [topic, isLoadingTopic, isErrorTopic, navigate]);
 
   const handleCopyAllEmails = async () => {
-    if (!contactsByGroup || Object.keys(contactsByGroup).length === 0) { // Changed to contactsByGroup
+    if (!contactsByGroup || Object.keys(contactsByGroup).length === 0) {
       showError('No contacts available to copy emails from.');
       return;
     }
 
     const allEmails = new Set<string>();
-    for (const groupId in contactsByGroup) { // Changed to groupId
-      contactsByGroup[groupId].forEach(contact => { // Changed to contactsByGroup
+    for (const groupId in contactsByGroup) {
+      contactsByGroup[groupId].forEach(contact => {
         allEmails.add(contact.email);
       });
     }
@@ -268,7 +268,7 @@ const TopicDetail = () => {
       return;
     }
 
-    const emailString = Array.from(allEmails).join('; '); // Using semicolon as separator
+    const emailString = Array.from(allEmails).join('; ');
     navigator.clipboard.writeText(emailString)
       .then(() => showSuccess('All unique contact emails copied to clipboard!'))
       .catch(() => showError('Failed to copy emails.'));
@@ -312,8 +312,8 @@ const TopicDetail = () => {
   }
 
   // Set SEO metadata (using topic.name and topic.description)
-  document.title = topic.name; // Changed from metaPageTitle
-  document.querySelector('meta[name="description"]')?.setAttribute('content', topic.description); // Changed from metaPageDescription
+  document.title = topic.name;
+  document.querySelector('meta[name="description"]')?.setAttribute('content', topic.description);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-950 dark:to-gray-900 p-4 sm:p-8">
@@ -326,23 +326,14 @@ const TopicDetail = () => {
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 leading-tight">
-          {topic.name} {/* Changed from topic.title */}
+          {topic.name}
         </h1>
         <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-4">
-          {topic.description} {/* Changed from topic.shortDescription */}
+          {topic.description}
         </p>
-        {/* Removed lastUpdated as it's no longer in schema */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Topic Context Block */}
-          <Card className="lg:col-span-2 rounded-xl shadow-lg border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Context</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
-              <MarkdownRenderer content={topic.description} /> {/* Changed from topic.longDescription */}
-            </CardContent>
-          </Card>
+          {/* Removed Topic Context Block */}
 
           {/* Personalization Panel */}
           <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-6">
@@ -405,14 +396,14 @@ const TopicDetail = () => {
         {/* Groups & Contacts */}
         <div className="mt-12">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Contacts</h2>
-          {groups?.map((group) => ( // Changed to groups and group
+          {groups?.map((group) => (
             <div key={group.id} className="mb-10">
               <h3 className="text-2xl font-semibold text-purple-800 dark:text-purple-300 mb-4">
-                {group.name} {/* Changed from category.name */}
+                {group.name}
               </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-6">{group.description}</p> {/* Changed from category.description */}
+              <p className="text-gray-700 dark:text-gray-300 mb-6">{group.description}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {contactsByGroup?.[group.id]?.map((contact) => ( // Changed to contactsByGroup and group.id
+                {contactsByGroup?.[group.id]?.map((contact) => (
                   <ContactCard key={contact.id} contact={contact} personalization={personalization} />
                 ))}
               </div>
