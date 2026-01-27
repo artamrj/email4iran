@@ -176,13 +176,13 @@ const ContactCard: React.FC<{
           </span>
         </p>
       </CardContent>
-      <CardFooter className="p-0 pt-4 flex flex-col sm:flex-row gap-2">
+      <CardFooter className="p-0 pt-4 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button
           onClick={handleSendRecommendedEmail}
-          className="w-full sm:w-auto flex-grow rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"
+          className="w-full min-w-0 flex-1 rounded-lg bg-primary text-primary-foreground text-sm py-2 px-3 hover:bg-primary/90"
           disabled={!subject || !body}
         >
-          <Mail className="mr-2 h-4 w-4" /> Send Recommended
+          <Mail className="mr-2 h-4 w-4" /> Send Email
         </Button>
         <Dialog
           onOpenChange={(open) => {
@@ -195,7 +195,7 @@ const ContactCard: React.FC<{
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              className="w-full sm:w-auto flex-grow rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-sm py-2 px-3"
+              className="w-full min-w-0 flex-1 rounded-lg border-accent text-accent text-sm py-2 px-3 hover:bg-accent/10 dark:hover:bg-accent/20"
             >
               <ExternalLink className="mr-2 h-4 w-4" /> Customize
             </Button>
