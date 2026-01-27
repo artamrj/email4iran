@@ -92,6 +92,12 @@ const topicFormSchema = z.object({
 });
 
 // --- Step 2: Nested Schemas ---
+const emailTemplateSchema = z.object({
+  emailLanguage: z.string().min(1, { message: "Email template language is required." }),
+  emailSubject: z.string().min(1, { message: "Email subject is required." }),
+  emailBody: z.string().min(1, { message: "Email body is required." }),
+});
+
 const contactSchema = z.object({
   contactName: z.string().min(1, { message: "Contact name is required." }),
   contactOrganization: z.string().optional(),
@@ -99,9 +105,7 @@ const contactSchema = z.object({
   contactEmoji: z.string().optional(),
   contactEmail: z.string().email({ message: "Invalid email address." }),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
-  emailLanguage: z.string().min(1, { message: "Email template language is required." }),
-  emailSubject: z.string().min(1, { message: "Email subject is required." }),
-  emailBody: z.string().min(1, { message: "Email body is required." }),
+  emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
 });
 
 const groupEntrySchema = z.object({
@@ -143,9 +147,11 @@ export const AddTopicDialog: React.FC = () => {
           contactEmoji: '',
           contactEmail: '',
           contactLanguages: ['en'],
-          emailLanguage: 'en',
-          emailSubject: '',
-          emailBody: '',
+          emailTemplates: [{ // Default for one email template within the first contact
+            emailLanguage: 'en',
+            emailSubject: '',
+            emailBody: '',
+          }],
         }],
       }],
     },
@@ -195,14 +201,16 @@ export const AddTopicDialog: React.FC = () => {
           };
           const createdContact = await createContact(contactData);
 
-          // Create Email Template
-          const emailTemplateData: Omit<EmailTemplate, 'id'> = {
-            contact_id: createdContact.id,
-            language: contactEntry.emailLanguage,
-            subject: contactEntry.emailSubject,
-            body: contactEntry.emailBody,
-          };
-          await createEmailTemplate(emailTemplateData);
+          // Create Email Templates for this contact
+          for (const templateEntry of contactEntry.emailTemplates) {
+            const emailTemplateData: Omit<EmailTemplate, 'id'> = {
+              contact_id: createdContact.id,
+              language: templateEntry.emailLanguage,
+              subject: templateEntry.emailSubject,
+              body: templateEntry.emailBody,
+            };
+            await createEmailTemplate(emailTemplateData);
+          }
         }
       }
 
@@ -384,9 +392,11 @@ export const AddTopicDialog: React.FC = () => {
                           contactEmoji: '',
                           contactEmail: '',
                           contactLanguages: ['en'],
-                          emailLanguage: 'en',
-                          emailSubject: '',
-                          emailBody: '',
+                          emailTemplates: [{ // Default for one email template within the new contact
+                            emailLanguage: 'en',
+                            emailSubject: '',
+                            emailBody: '',
+                          }],
                         }
                       ]);
                     }}
@@ -410,9 +420,11 @@ export const AddTopicDialog: React.FC = () => {
                     contactEmoji: '',
                     contactEmail: '',
                     contactLanguages: ['en'],
-                    emailLanguage: 'en',
-                    emailSubject: '',
-                    emailBody: '',
+                    emailTemplates: [{
+                      emailLanguage: 'en',
+                      emailSubject: '',
+                      emailBody: '',
+                    }],
                   }],
                 })}
                 className="w-full rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-base py-3 mt-4"
@@ -565,12 +577,72 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
           />
           <Separator className="my-4 bg-border rounded-full" />
 
-          {/* Email Template Details */}
-          <h5 className="text-md font-semibold text-foreground mt-4 mb-2">Email Template</h5>
+          {/* Email Templates Field Array */}
+          <EmailTemplatesFieldArray
+            groupIndex={groupIndex}
+            contactIndex={contactIndex}
+            control={control}
+            languages={languages}
+          />
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const currentTemplates = control.getValues(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`);
+              control.setValue(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`, [
+                ...currentTemplates,
+                {
+                  emailLanguage: 'en',
+                  emailSubject: '',
+                  emailBody: '',
+                }
+              ]);
+            }}
+            className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add Another Email Template
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// New component for managing multiple email templates per contact
+const EmailTemplatesFieldArray: React.FC<{
+  groupIndex: number;
+  contactIndex: number;
+  control: Control<z.infer<typeof contactsFormSchema>>;
+  languages: { value: string; label: string }[];
+}> = ({ groupIndex, contactIndex, control, languages }) => {
+  const { fields: emailTemplateFields, remove: removeEmailTemplate } = useFieldArray({
+    control,
+    name: `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`,
+  });
+
+  return (
+    <div className="grid gap-4">
+      {emailTemplateFields.map((templateField, templateIndex) => (
+        <div key={templateField.id} className="relative border border-border rounded-lg p-4 bg-card/30">
+          <h5 className="text-md font-semibold text-foreground mb-4">Email Template #{templateIndex + 1}</h5>
+          {emailTemplateFields.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => removeEmailTemplate(templateIndex)}
+              className="absolute top-2 right-2 text-destructive hover:bg-destructive/10 rounded-full"
+            >
+              <XCircle className="h-4 w-4" />
+              <span className="sr-only">Remove Email Template</span>
+            </Button>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <FormField
               control={control}
-              name={`groups.${groupIndex}.contacts.${contactIndex}.emailLanguage`}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailLanguage`}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium text-foreground">Template Language</FormLabel>
@@ -594,7 +666,7 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
             />
             <FormField
               control={control}
-              name={`groups.${groupIndex}.contacts.${contactIndex}.emailSubject`}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm font-medium text-foreground">Subject</FormLabel>
@@ -608,7 +680,7 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
           </div>
           <FormField
             control={control}
-            name={`groups.${groupIndex}.contacts.${contactIndex}.emailBody`}
+            name={`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`}
             render={({ field }) => (
               <FormItem className="mb-2">
                 <FormLabel className="text-sm font-medium text-foreground">Body</FormLabel>
