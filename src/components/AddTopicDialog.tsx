@@ -87,6 +87,8 @@ const languages = [
   { value: 'local', label: 'Local (dynamic)' },
 ].sort((a, b) => a.label.localeCompare(b.label));
 
+type TopicFormValues = Omit<Topic, 'id'>;
+
 // --- Step 1: Topic Schema ---
 const topicFormSchema = z.object({
   slug: z.string().min(1, { message: "Slug is required." }).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
@@ -95,7 +97,7 @@ const topicFormSchema = z.object({
   name: z.string().min(1, { message: "Topic name is required." }),
   description: z.string().min(1, { message: "Description is required." }),
   emoji: z.string().optional(),
-});
+}) satisfies z.ZodType<TopicFormValues>;
 
 // --- Step 2: Nested Schemas ---
 const emailTemplateSchema = z.object({
@@ -140,7 +142,7 @@ export const AddTopicDialog: React.FC = () => {
 
   const hasPasswordConfigured = !!process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD; // Check if env var is set
 
-  const topicForm = useForm<z.infer<typeof topicFormSchema>>({
+  const topicForm = useForm<TopicFormValues>({
     resolver: zodResolver(topicFormSchema),
     defaultValues: {
       slug: '',
@@ -175,7 +177,7 @@ export const AddTopicDialog: React.FC = () => {
     name: "groups",
   });
 
-  const handleTopicSubmit = async (values: z.infer<typeof topicFormSchema>) => {
+  const handleTopicSubmit = async (values: TopicFormValues) => {
     setTempTopicData(values);
     showSuccess('Topic details saved! Now add contacts.');
     setStep(2);
