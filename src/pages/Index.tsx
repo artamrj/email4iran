@@ -13,16 +13,19 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => { // Use Topic type
     <Link to={`/${topic.slug}`} className="block h-full">
       <Card className="h-full flex flex-col justify-between rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out border border-border bg-card text-card-foreground">
         <CardHeader className="pb-2">
-          <CardTitle className="text-2xl font-extrabold text-primary leading-tight">
-            {topic.name} {/* Changed from topic.title */}
-          </CardTitle>
+          <div className="flex items-center gap-2 mb-1">
+            {topic.emoji && <span className="text-3xl">{topic.emoji}</span>}
+            <CardTitle className="text-2xl font-extrabold text-primary leading-tight">
+              {topic.name}
+            </CardTitle>
+          </div>
           <CardDescription className="text-sm text-muted-foreground mt-1">
             {/* Removed topic.primaryRegion as it's no longer in schema */}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
           <p className="text-base text-foreground mb-4 line-clamp-3">
-            {topic.description} {/* Changed from topic.shortDescription */}
+            {topic.description}
           </p>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2 pt-0">

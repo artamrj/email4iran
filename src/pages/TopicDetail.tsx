@@ -329,9 +329,12 @@ const TopicDetail = () => {
           {/* Main Topic Overview Card */}
           <Card className="lg:col-span-2 rounded-lg shadow-lg border border-border bg-card p-6">
             <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-4xl sm:text-5xl font-extrabold text-foreground leading-tight mb-2">
-                {topic.name}
-              </CardTitle>
+              <div className="flex items-center gap-3 mb-2">
+                {topic.emoji && <span className="text-5xl sm:text-6xl leading-none">{topic.emoji}</span>}
+                <CardTitle className="text-4xl sm:text-5xl font-extrabold text-foreground leading-tight">
+                  {topic.name}
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="p-0 prose dark:prose-invert max-w-none text-foreground mt-4">
               <MarkdownRenderer content={topic.description} />
