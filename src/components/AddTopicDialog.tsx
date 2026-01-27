@@ -138,7 +138,7 @@ export const AddTopicDialog: React.FC = () => {
   const [isPasswordVerified, setIsPasswordVerified] = useState(false); // New state
   const queryClient = useQueryClient();
 
-  const hasPasswordConfigured = !!import.meta.env.VITE_ADD_TOPIC_PASSWORD; // Check if env var is set
+  const hasPasswordConfigured = !!process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD; // Check if env var is set
 
   const topicForm = useForm<z.infer<typeof topicFormSchema>>({
     resolver: zodResolver(topicFormSchema),
@@ -280,7 +280,7 @@ export const AddTopicDialog: React.FC = () => {
         </TooltipTrigger>
         {!hasPasswordConfigured && (
           <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
-            <p>Please set `VITE_ADD_TOPIC_PASSWORD` in your .env file to enable this feature.</p>
+            <p>Please set `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` in your .env.local file to enable this feature.</p>
           </TooltipContent>
         )}
       </Tooltip>
