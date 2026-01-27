@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import * as z from 'zod';
+import *s z from 'zod';
 import { Plus, ChevronDown, XCircle } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -39,8 +39,8 @@ const emailTemplateSchema = z.object({
 // Define the schema for contacts (re-using from AddTopicDialog)
 const contactSchema = z.object({
   contactName: z.string().min(1, { message: "Contact name is required." }),
-  contactOrganization: z.string().optional(),
-  contactLocation: z.string().optional(),
+  // contactOrganization: z.string().optional(), // Removed for simplification
+  // contactLocation: z.string().optional(), // Removed for simplification
   contactEmoji: z.string().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
@@ -57,7 +57,7 @@ const contactSchema = z.object({
 // Define the schema for groups (re-using from AddTopicDialog)
 const groupEntrySchema = z.object({
   groupName: z.string().min(1, { message: "Group name is required." }),
-  groupDescription: z.string().optional(),
+  // groupDescription: z.string().optional(), // Removed for simplification
   contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
 });
 
@@ -135,34 +135,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
               </FormItem>
             )}
           />
-          <FormField
-            control={control}
-            name={`groups.${groupIndex}.contacts.${contactIndex}.contactOrganization`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-foreground">Organization (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ministry of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <FormField
-            control={control}
-            name={`groups.${groupIndex}.contacts.${contactIndex}.contactLocation`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-foreground">Location (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Tehran, Iran" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Removed contactOrganization field */}
           <FormField
             control={control}
             name={`groups.${groupIndex}.contacts.${contactIndex}.contactEmoji`}
@@ -177,6 +150,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             )}
           />
         </div>
+        {/* Removed contactLocation field */}
         <FormField
           control={control}
           name={`groups.${groupIndex}.contacts.${contactIndex}.contactEmail`}

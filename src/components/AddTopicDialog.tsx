@@ -104,8 +104,8 @@ const emailTemplateSchema = z.object({
 
 const contactSchema = z.object({
   contactName: z.string().min(1, { message: "Contact name is required." }),
-  contactOrganization: z.string().optional(),
-  contactLocation: z.string().optional(),
+  // contactOrganization: z.string().optional(), // Removed for simplification
+  // contactLocation: z.string().optional(), // Removed for simplification
   contactEmoji: z.string().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
@@ -121,7 +121,7 @@ const contactSchema = z.object({
 
 const groupEntrySchema = z.object({
   groupName: z.string().min(1, { message: "Group name is required." }),
-  groupDescription: z.string().optional(),
+  // groupDescription: z.string().optional(), // Removed for simplification
   contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
 });
 
@@ -150,11 +150,11 @@ export const AddTopicDialog: React.FC = () => {
     defaultValues: {
       groups: [{
         groupName: '',
-        groupDescription: '',
+        // groupDescription: '', // Removed for simplification
         contacts: [{
           contactName: '',
-          contactOrganization: '',
-          contactLocation: '',
+          // contactOrganization: '', // Removed for simplification
+          // contactLocation: '', // Removed for simplification
           contactEmoji: '',
           contactEmail: '',
           contactLanguages: ['en'],
@@ -195,7 +195,7 @@ export const AddTopicDialog: React.FC = () => {
         const groupData: Omit<Group, 'id'> = {
           topic_id: newTopicId, // Link to the newly created topic
           name: groupEntry.groupName,
-          description: groupEntry.groupDescription,
+          // description: groupEntry.groupDescription, // Removed for simplification
         };
         const createdGroup = await createGroup(groupData);
 
@@ -204,8 +204,8 @@ export const AddTopicDialog: React.FC = () => {
           const contactData: Omit<Contact, 'id'> = {
             group_id: createdGroup.id,
             name: contactEntry.contactName,
-            organization: contactEntry.contactOrganization || null,
-            location: contactEntry.contactLocation || null,
+            organization: null, // Set to null as it's removed from form
+            location: null, // Set to null as it's removed from form
             emoji: contactEntry.contactEmoji || '👤',
             email: contactEntry.contactEmail,
             languages: contactEntry.contactLanguages,
@@ -383,19 +383,7 @@ export const AddTopicDialog: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={contactForm.control}
-                      name={`groups.${groupIndex}.groupDescription`}
-                      render={({ field }) => (
-                        <FormItem className="mb-4">
-                          <FormLabel className="text-sm font-medium text-foreground">Group Description (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Officials responsible for policy making..." rows={2} className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {/* Removed groupDescription field */}
                     <Separator className="my-6 bg-border rounded-full" />
 
                     {/* Contacts Field Array */}
@@ -422,8 +410,8 @@ export const AddTopicDialog: React.FC = () => {
                           ...currentContacts,
                           {
                             contactName: '',
-                            contactOrganization: '',
-                            contactLocation: '',
+                            // contactOrganization: '', // Removed for simplification
+                            // contactLocation: '', // Removed for simplification
                             contactEmoji: '',
                             contactEmail: '',
                             contactLanguages: ['en'],
@@ -448,11 +436,11 @@ export const AddTopicDialog: React.FC = () => {
                 variant="outline"
                 onClick={() => appendGroup({
                   groupName: '',
-                  groupDescription: '',
+                  // groupDescription: '', // Removed for simplification
                   contacts: [{
                     contactName: '',
-                    contactOrganization: '',
-                    contactLocation: '',
+                    // contactOrganization: '', // Removed for simplification
+                    // contactLocation: '', // Removed for simplification
                     contactEmoji: '',
                     contactEmail: '',
                     contactLanguages: ['en'],

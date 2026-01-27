@@ -36,8 +36,8 @@ const emailTemplateSchema = z.object({
 // Define the schema for contacts (re-using from AddTopicDialog)
 const contactSchema = z.object({
   contactName: z.string().min(1, { message: "Contact name is required." }),
-  contactOrganization: z.string().optional(),
-  contactLocation: z.string().optional(),
+  // contactOrganization: z.string().optional(), // Removed for simplification
+  // contactLocation: z.string().optional(), // Removed for simplification
   contactEmoji: z.string().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
@@ -54,7 +54,7 @@ const contactSchema = z.object({
 // Define the schema for groups (re-using from AddTopicDialog)
 const groupEntrySchema = z.object({
   groupName: z.string().min(1, { message: "Group name is required." }),
-  groupDescription: z.string().optional(),
+  // groupDescription: z.string().optional(), // Removed for simplification
   contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
 });
 
