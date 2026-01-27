@@ -34,11 +34,11 @@ import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils'; // Import cn for conditional classNames
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // New imports for Tooltip
 
 import { ContactForm } from './ContactForm';
-import { PasswordPrompt } from './PasswordPrompt';
+import { PasswordPrompt } from './PasswordPrompt'; // New import
 
 // --- Language List ---
 const languages = [
@@ -135,10 +135,10 @@ export const AddTopicDialog: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [tempTopicData, setTempTopicData] = useState<Omit<Topic, 'id'> | null>(null);
-  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false); // New state
   const queryClient = useQueryClient();
 
-  const hasPasswordConfigured = !!import.meta.env.VITE_ADD_TOPIC_PASSWORD;
+  const hasPasswordConfigured = !!import.meta.env.VITE_ADD_TOPIC_PASSWORD; // Check if env var is set
 
   const topicForm = useForm<z.infer<typeof topicFormSchema>>({
     resolver: zodResolver(topicFormSchema),
@@ -195,9 +195,9 @@ export const AddTopicDialog: React.FC = () => {
       for (const groupEntry of values.groups) {
         // Create Group
         const groupData: Omit<Group, 'id'> = {
-          topic_id: newTopicId,
+          topic_id: newTopicId, // Link to the newly created topic
           name: groupEntry.groupName,
-          // description: groupEntry.groupDescription,
+          // description: groupEntry.groupDescription, // Removed for simplification
         };
         const createdGroup = await createGroup(groupData);
 
@@ -206,8 +206,8 @@ export const AddTopicDialog: React.FC = () => {
           const contactData: Omit<Contact, 'id'> = {
             group_id: createdGroup.id,
             name: contactEntry.contactName,
-            organization: null,
-            location: null,
+            organization: null, // Set to null as it's removed from form
+            location: null, // Set to null as it's removed from form
             emoji: contactEntry.contactEmoji || '👤',
             email: contactEntry.contactEmail,
             languages: contactEntry.contactLanguages,
@@ -236,7 +236,7 @@ export const AddTopicDialog: React.FC = () => {
       setStep(1);
       topicForm.reset();
       contactForm.reset();
-      setTempTopicData(null);
+      setTempTopicData(null); // Clear temporary data
     } catch (error) {
       console.error('Error adding all details:', error);
       showError('Failed to add all details. Please try again.');
@@ -249,19 +249,19 @@ export const AddTopicDialog: React.FC = () => {
       setStep(1);
       topicForm.reset();
       contactForm.reset();
-      setTempTopicData(null);
-      setIsPasswordVerified(false);
+      setTempTopicData(null); // Clear temporary data on close
+      setIsPasswordVerified(false); // Reset password verification on close
     }
   };
 
   const handlePasswordSuccess = () => {
     setIsPasswordVerified(true);
-    setStep(1);
+    setStep(1); // Start at step 1 after password verification
   };
 
   const handlePasswordCancel = () => {
-    setIsOpen(false);
-    setIsPasswordVerified(false);
+    setIsOpen(false); // Close dialog if password prompt is cancelled
+    setIsPasswordVerified(false); // Ensure it's reset
   };
 
   return (
@@ -271,8 +271,8 @@ export const AddTopicDialog: React.FC = () => {
           <Button
             onClick={() => setIsOpen(true)}
             variant="ghost"
-            className="rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2"
-            disabled={!hasPasswordConfigured}
+            className="fixed top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2"
+            disabled={!hasPasswordConfigured} // Disable if password not configured
           >
             <Plus className="h-5 w-5" />
             <span>Add New Topic</span>
@@ -383,7 +383,7 @@ export const AddTopicDialog: React.FC = () => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={(e) => {
-                                  e.stopPropagation();
+                                  e.stopPropagation(); // Prevent collapsible from toggling
                                   removeGroup(groupIndex);
                                 }}
                                 className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8"
@@ -439,8 +439,8 @@ export const AddTopicDialog: React.FC = () => {
                               ...currentContacts,
                               {
                                 contactName: '',
-                                // contactOrganization: '',
-                                // contactLocation: '',
+                                // contactOrganization: '', // Removed for simplification
+                                // contactLocation: '', // Removed for simplification
                                 contactEmoji: '',
                                 contactEmail: '',
                                 contactLanguages: ['en'],
@@ -465,11 +465,11 @@ export const AddTopicDialog: React.FC = () => {
                     variant="outline"
                     onClick={() => appendGroup({
                       groupName: '',
-                      // groupDescription: '',
+                      // groupDescription: '', // Removed for simplification
                       contacts: [{
                         contactName: '',
-                        // contactOrganization: '',
-                        // contactLocation: '',
+                        // contactOrganization: '', // Removed for simplification
+                        // contactLocation: '', // Removed for simplification
                         contactEmoji: '',
                         contactEmail: '',
                         contactLanguages: ['en'],
