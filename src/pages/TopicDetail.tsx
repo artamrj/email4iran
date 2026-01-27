@@ -107,17 +107,25 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
 
   if (isLoadingTemplates) {
     return (
-      <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full min-h-[200px]">
-        <Skeleton className="h-6 w-3/4 mb-2 rounded-lg" />
-        <Skeleton className="h-4 w-1/2 mb-4 rounded-lg" />
-        <Skeleton className="h-10 w-full rounded-lg" />
+      <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 flex flex-col justify-between h-full min-h-[200px]">
+        <CardHeader className="px-4 pt-4 pb-2 flex-shrink-0">
+          <Skeleton className="h-6 w-3/4 mb-2 rounded-lg" />
+          <Skeleton className="h-4 w-1/2 mb-4 rounded-lg" />
+        </CardHeader>
+        <CardContent className="px-4 flex-grow flex items-end">
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </CardContent>
+        <CardFooter className="px-4 pt-4 pb-4 flex flex-col sm:flex-row gap-2 flex-shrink-0">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </CardFooter>
       </Card>
     );
   }
 
   return (
-    <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4 flex flex-col justify-between h-full min-h-[200px]">
-      <CardHeader className="p-0 pb-2 flex-shrink-0">
+    <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 flex flex-col justify-between h-full min-h-[200px]">
+      <CardHeader className="px-4 pt-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">{contact.emoji}</span>
           <CardTitle className="text-lg font-semibold text-foreground leading-tight truncate">
@@ -132,12 +140,12 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
           {contact.email}
         </p>
       </CardHeader>
-      <CardContent className="p-0 flex-grow flex items-end">
+      <CardContent className="px-4 flex-grow flex items-end">
         <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
           Languages: {contact.languages.join(', ').toUpperCase()}
         </div>
       </CardContent>
-      <CardFooter className="p-0 pt-4 flex flex-col sm:flex-row gap-2 flex-shrink-0">
+      <CardFooter className="px-4 pt-4 pb-4 flex flex-col sm:flex-row gap-2 flex-shrink-0">
         <Button
           onClick={handleSendRecommendedEmail}
           className="w-full sm:w-auto flex-grow rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2.5 px-4"
