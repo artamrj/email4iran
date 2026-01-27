@@ -1,18 +1,21 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "email4iran",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cf": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "eslint .",
-    "deploy:cf": "opennextjs-cloudflare deploy"
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@opennextjs/cloudflare": "^1.16.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -49,7 +52,7 @@
     "embla-carousel-react": "^8.3.0",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
-    "next": "^16.1.5",
+    "next": "16.1.5",
     "next-themes": "^0.3.0",
     "react": "^19.2.3",
     "react-day-picker": "^9.13.0",
@@ -66,7 +69,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
-    "@opennextjs/cloudflare": "^1.16.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
     "@types/react": "^19.2.8",
