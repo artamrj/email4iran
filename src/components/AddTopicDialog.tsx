@@ -34,6 +34,53 @@ import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { Separator } from '@/components/ui/separator';
 
+// --- Language List ---
+const languages = [
+  { value: 'sq', label: 'Albanian' },
+  { value: 'ar', label: 'Arabic' },
+  { value: 'be', label: 'Belarusian' },
+  { value: 'bn', label: 'Bengali' },
+  { value: 'bs', label: 'Bosnian' },
+  { value: 'bg', label: 'Bulgarian' },
+  { value: 'ca', label: 'Catalan' },
+  { value: 'zh', label: 'Chinese (Mandarin)' },
+  { value: 'hr', label: 'Croatian' },
+  { value: 'cs', label: 'Czech' },
+  { value: 'da', label: 'Danish' },
+  { value: 'nl', label: 'Dutch' },
+  { value: 'en', label: 'English' },
+  { value: 'et', label: 'Estonian' },
+  { value: 'fa', label: 'Farsi' },
+  { value: 'fi', label: 'Finnish' },
+  { value: 'fr', label: 'French' },
+  { value: 'de', label: 'German' },
+  { value: 'el', label: 'Greek' },
+  { value: 'hi', label: 'Hindi' },
+  { value: 'hu', label: 'Hungarian' },
+  { value: 'is', label: 'Icelandic' },
+  { value: 'ga', label: 'Irish' },
+  { value: 'it', label: 'Italian' },
+  { value: 'lv', label: 'Latvian' },
+  { value: 'lt', label: 'Lithuanian' },
+  { value: 'mk', label: 'Macedonian' },
+  { value: 'mt', label: 'Maltese' },
+  { value: 'no', label: 'Norwegian' },
+  { value: 'pl', label: 'Polish' },
+  { value: 'pt', label: 'Portuguese' },
+  { value: 'ro', label: 'Romanian' },
+  { value: 'ru', label: 'Russian' },
+  { value: 'sr', label: 'Serbian' },
+  { value: 'sk', label: 'Slovak' },
+  { value: 'sl', label: 'Slovenian' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'sv', label: 'Swedish' },
+  { value: 'tr', label: 'Turkish' },
+  { value: 'uk', label: 'Ukrainian' },
+  { value: 'ur', label: 'Urdu' },
+  { value: 'cy', label: 'Welsh' },
+  { value: 'local', label: 'Local (dynamic)' },
+].sort((a, b) => a.label.localeCompare(b.label));
+
 // --- Step 1: Topic Schema ---
 const topicFormSchema = z.object({
   slug: z.string().min(1, { message: "Slug is required." }).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
@@ -321,7 +368,7 @@ export const AddTopicDialog: React.FC = () => {
                   <Separator className="my-6 bg-border rounded-full" />
 
                   {/* Inner useFieldArray for contacts within this group */}
-                  <ContactsFieldArray groupIndex={groupIndex} control={contactForm.control} />
+                  <ContactsFieldArray groupIndex={groupIndex} control={contactForm.control} languages={languages} />
 
                   <Button
                     type="button"
@@ -394,7 +441,7 @@ export const AddTopicDialog: React.FC = () => {
   );
 };
 
-const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infer<typeof contactsFormSchema>> }> = ({ groupIndex, control }) => {
+const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infer<typeof contactsFormSchema>>; languages: { value: string; label: string }[] }> = ({ groupIndex, control, languages }) => {
   const { fields: contactFields, remove: removeContact } = useFieldArray({
     control,
     name: `groups.${groupIndex}.contacts`,
@@ -502,9 +549,11 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="fa">Farsi</SelectItem>
-                    <SelectItem value="local">Local (dynamic)</SelectItem>
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormDescription className="text-xs text-muted-foreground">
@@ -532,9 +581,11 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="fa">Farsi</SelectItem>
-                      <SelectItem value="local">Local (dynamic)</SelectItem>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
