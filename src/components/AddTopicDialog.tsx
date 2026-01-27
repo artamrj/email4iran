@@ -19,7 +19,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription, // Added FormDescription here
+  FormDescription,
 } from '@/components/ui/form';
 import {
   Select,
@@ -177,7 +177,7 @@ export const AddTopicDialog: React.FC = () => {
         <Plus className="h-6 w-6" />
         <span className="sr-only">Add New Topic</span>
       </Button>
-      <DialogContent className="sm:max-w-[500px] rounded-xl p-6 bg-card text-card-foreground">
+      <DialogContent className="sm:max-w-[700px] rounded-xl p-6 bg-card text-card-foreground overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">
             {step === 1 ? 'Create New Topic' : 'Add Contact Details'}
@@ -309,58 +309,62 @@ export const AddTopicDialog: React.FC = () => {
 
               {/* Contact Details */}
               <h3 className="text-lg font-semibold text-foreground mt-4">Contact Details</h3>
-              <FormField
-                control={contactForm.control}
-                name="contactName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Contact Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Minister of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={contactForm.control}
-                name="contactOrganization"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Organization (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ministry of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={contactForm.control}
-                name="contactLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Location (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Tehran, Iran" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={contactForm.control}
-                name="contactEmoji"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., 🇮🇷)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="🇮🇷" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={contactForm.control}
+                  name="contactName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Contact Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Minister of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="contactOrganization"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Organization (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ministry of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={contactForm.control}
+                  name="contactLocation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Location (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Tehran, Iran" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="contactEmoji"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., 🇮🇷)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="🇮🇷" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={contactForm.control}
                 name="contactEmail"
@@ -402,41 +406,43 @@ export const AddTopicDialog: React.FC = () => {
 
               {/* Email Template Details */}
               <h3 className="text-lg font-semibold text-foreground mt-4">Email Template</h3>
-              <FormField
-                control={contactForm.control}
-                name="emailLanguage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Template Language</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={contactForm.control}
+                  name="emailLanguage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Template Language</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
+                            <SelectValue placeholder="Select template language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="fa">Farsi</SelectItem>
+                          <SelectItem value="local">Local (dynamic)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={contactForm.control}
+                  name="emailSubject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Subject</FormLabel>
                       <FormControl>
-                        <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
-                          <SelectValue placeholder="Select template language" />
-                        </SelectTrigger>
+                        <Input placeholder="Regarding the recent events in {{city}}" className="rounded-lg border-border bg-input text-foreground" {...field} />
                       </FormControl>
-                      <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="fa">Farsi</SelectItem>
-                        <SelectItem value="local">Local (dynamic)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={contactForm.control}
-                name="emailSubject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Subject</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Regarding the recent events in {{city}}" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={contactForm.control}
                 name="emailBody"
