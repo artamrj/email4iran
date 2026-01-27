@@ -62,10 +62,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // New Iranian flag colors
-        "iran-green": "hsl(var(--iran-green))",
-        "iran-white": "hsl(var(--iran-white))",
-        "iran-red": "hsl(var(--iran-red))",
       },
       borderRadius: {
         lg: "var(--radius)",
