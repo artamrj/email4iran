@@ -29,9 +29,6 @@ export function ThemeToggle() {
         <DropdownMenuItem onClick={() => setTheme("dark")} className="rounded-lg cursor-pointer">
           Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")} className="rounded-lg cursor-pointer">
-          System
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
