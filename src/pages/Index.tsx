@@ -59,7 +59,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-950 dark:to-gray-900 p-4 sm:p-8">
       <div className="container mx-auto max-w-6xl py-12">
         <h1 className="text-5xl font-extrabold text-center mb-6 text-gray-900 dark:text-white drop-shadow-lg">
-          Email4Iran 🇮🇷🦁
+          Advocate for Change
         </h1>
         <p className="text-xl text-center text-gray-700 dark:text-gray-300 mb-12 max-w-2xl mx-auto">
           Explore various topics and make your voice heard by sending emails to key contacts.
