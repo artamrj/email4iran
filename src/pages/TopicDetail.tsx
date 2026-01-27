@@ -332,9 +332,7 @@ const TopicDetail = () => {
               <CardTitle className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-2">
                 {topic.name}
               </CardTitle>
-              <CardDescription className="text-lg sm:text-xl text-gray-700 dark:text-gray-300">
-                {topic.description}
-              </CardDescription>
+              {/* Removed duplicate description here */}
             </CardHeader>
             <CardContent className="p-0 prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 mt-4">
               <MarkdownRenderer content={topic.description} />
