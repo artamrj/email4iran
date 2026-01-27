@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npx wrangler deploy --assets=./dist"
+    "deploy": "wrangler deploy --assets=./dist"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -81,6 +81,7 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^6.3.4"
+    "vite": "^6.3.4",
+    "wrangler": "^3.67.1"
   }
 }
