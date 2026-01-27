@@ -9,7 +9,7 @@
     "build:cf": "next build && next-on-pages",
     "start": "next start",
     "lint": "eslint .",
-    "deploy:cf": "wrangler pages deploy .vercel/output/static"
+    "deploy:cf": "pnpm dlx wrangler pages deploy .vercel/output/static"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -78,6 +78,7 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
-    "typescript-eslint": "^8.0.1"
+    "typescript-eslint": "^8.0.1",
+    "wrangler": "^4.61.0"
   }
 }
