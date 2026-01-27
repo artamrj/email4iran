@@ -19,16 +19,6 @@ export const getTopicBySlug = async (slug: string): Promise<Topic | null> => {
   return data;
 };
 
-export const createTopic = async (newTopic: Omit<Topic, 'id'>): Promise<Topic> => {
-  const { data, error } = await supabase
-    .from('topics')
-    .insert([newTopic])
-    .select('id, slug, name, description, emoji, default_language')
-    .single();
-  if (error) throw error;
-  return data;
-};
-
 export const getGroupsByTopicId = async (topicId: string): Promise<Group[]> => { // Renamed function
   const { data, error } = await supabase
     .from('groups') // Changed table name
