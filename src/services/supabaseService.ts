@@ -45,3 +45,45 @@ export const getEmailTemplatesByContactId = async (contactId: string): Promise<E
   if (error) throw error;
   return data;
 };
+
+// --- New functions for creating data ---
+
+export const createTopic = async (topicData: Omit<Topic, 'id'>): Promise<Topic> => {
+  const { data, error } = await supabase
+    .from('topics')
+    .insert([topicData])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const createGroup = async (groupData: Omit<Group, 'id'>): Promise<Group> => {
+  const { data, error } = await supabase
+    .from('groups')
+    .insert([groupData])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const createContact = async (contactData: Omit<Contact, 'id'>): Promise<Contact> => {
+  const { data, error } = await supabase
+    .from('contacts')
+    .insert([contactData])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const createEmailTemplate = async (templateData: Omit<EmailTemplate, 'id'>): Promise<EmailTemplate> => {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .insert([templateData])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};

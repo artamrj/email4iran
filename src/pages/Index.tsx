@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Topic } from '@/types/supabase'; // Import Topic type
+import { AddTopicDialog } from '@/components/AddTopicDialog'; // Import the new component
 
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => { // Use Topic type
   return (
@@ -57,6 +58,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 sm:p-8">
+      <AddTopicDialog /> {/* Integrated the new component here */}
       <div className="container mx-auto max-w-6xl py-12">
         <h1 className="text-5xl font-extrabold text-center mb-6 text-foreground drop-shadow-lg">
           Email4Iran
