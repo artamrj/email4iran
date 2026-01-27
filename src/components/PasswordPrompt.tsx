@@ -30,7 +30,7 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, onCan
     const expectedPassword = import.meta.env.VITE_ADD_TOPIC_PASSWORD;
 
     if (!expectedPassword) {
-      showError("Password not configured. Please set VITE_ADD_TOPIC_PASSWORD in your .env file.");
+      showError("Password not configured. Please set VITE_ADD_TOPIC_PASSWORD in your Cloudflare environment variables.");
       return;
     }
 
