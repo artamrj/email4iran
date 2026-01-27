@@ -27,10 +27,12 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, onCan
   });
 
   const onSubmit = (values: z.infer<typeof passwordSchema>) => {
+    // VITE_ADD_TOPIC_PASSWORD should be set as a build-time environment variable
+    // in your hosting platform (e.g., Cloudflare Pages) or locally when running `vite dev`.
     const expectedPassword = import.meta.env.VITE_ADD_TOPIC_PASSWORD;
 
     if (!expectedPassword) {
-      showError("Password not configured. Please set VITE_ADD_TOPIC_PASSWORD in your .env file.");
+      showError("Password not configured. Please set VITE_ADD_TOPIC_PASSWORD as a build-time environment variable.");
       return;
     }
 
