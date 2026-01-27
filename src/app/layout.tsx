@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
+
 import "./globals.css";
 import { Providers } from "./providers";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Email4Iran",
   description: "Explore topics and send emails to key contacts.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
