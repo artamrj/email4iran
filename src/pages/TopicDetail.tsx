@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MadeWithDyad } from "@/components/made-with-dyad";
+import { MadeWithDyad } from "@/components/made-with-dyad"; // Added import
 
 interface Personalization {
   name: string;
@@ -80,37 +80,26 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
     queryFn: () => getEmailTemplatesByContactId(contact.id),
   });
 
-  // This useMemo computes the *recommended* email based on personalization logic
-  // This will be used for the "Customize" dialog
-  const { subject: recommendedSubject, body: recommendedBody } = useMemo(() => {
+  const { subject, body } = useMemo(() => {
     if (!templates) return { subject: '', body: '' };
     return getEmailBody(templates, personalization, contact.languages);
   }, [templates, personalization, contact.languages]);
 
-  // This useMemo prepares all available email contents by language for the direct send buttons
-  const emailContentsByLanguage = useMemo(() => {
-    const contents = new Map<string, { subject: string, body: string }>();
-    if (templates) {
-      const uniqueLanguages = new Set(templates.map(t => t.language));
-      uniqueLanguages.forEach(lang => {
-        const template = templates.find(t => t.language === lang);
-        if (template) {
-          contents.set(lang, {
-            subject: replacePlaceholders(template.subject, personalization),
-            body: replacePlaceholders(template.body, personalization),
-          });
-        }
-      });
+  const handleSendRecommendedEmail = () => {
+    if (!subject || !body) {
+      showError('No email template available.');
+      return;
     }
-    return contents;
-  }, [templates, personalization]);
+    const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+  };
 
   const handleCopyEmail = () => {
-    if (!recommendedSubject || !recommendedBody) {
+    if (!subject || !body) {
       showError('No email template available to copy.');
       return;
     }
-    const emailContent = `Subject: ${recommendedSubject}\n\n${recommendedBody}`;
+    const emailContent = `Subject: ${subject}\n\n${body}`;
     navigator.clipboard.writeText(emailContent)
       .then(() => showSuccess('Email content copied to clipboard!'))
       .catch(() => showError('Failed to copy email content.'));
@@ -147,40 +136,17 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
           Languages: {contact.languages.join(', ').toUpperCase()}
         </div>
       </CardContent>
-      <CardFooter className="p-0 pt-4 flex flex-col gap-2">
-        {emailContentsByLanguage.size > 0 && (
-          <div className="flex flex-col gap-2 p-3 border rounded-xl bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Send in:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {Array.from(emailContentsByLanguage.keys()).map(lang => {
-                const content = emailContentsByLanguage.get(lang);
-                const langDisplayName = lang === 'en' ? 'English' : (lang === 'local' ? 'Local' : lang.toUpperCase());
-
-                return (
-                  <Button
-                    key={lang}
-                    onClick={() => {
-                      if (content?.subject && content?.body) {
-                        const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(content.subject)}&body=${encodeURIComponent(content.body)}`;
-                        window.location.href = mailtoLink;
-                      } else {
-                        showError(`No email template available for ${langDisplayName}.`);
-                      }
-                    }}
-                    className="w-full rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-3"
-                    disabled={!content?.subject || !content?.body}
-                  >
-                    <Mail className="mr-2 h-4 w-4" /> {langDisplayName}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+      <CardFooter className="p-0 pt-4 flex flex-col sm:flex-row gap-2">
+        <Button
+          onClick={handleSendRecommendedEmail}
+          className="w-full sm:w-auto flex-grow rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-3"
+          disabled={!subject || !body}
+        >
+          <Mail className="mr-2 h-4 w-4" /> Send Recommended
+        </Button>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full rounded-lg border-purple-600 text-purple-600 hover:bg-purple-50 dark:border-purple-400 dark:text-purple-400 dark:hover:bg-gray-700 text-sm py-2 px-3">
+            <Button variant="outline" className="w-full sm:w-auto flex-grow rounded-lg border-purple-600 text-purple-600 hover:bg-purple-50 dark:border-purple-400 dark:text-purple-400 dark:hover:bg-gray-700 text-sm py-2 px-3">
               <ExternalLink className="mr-2 h-4 w-4" /> Customize
             </Button>
           </DialogTrigger>
@@ -196,7 +162,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                 <Label htmlFor="subject" className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
                 <Input
                   id="subject"
-                  value={recommendedSubject}
+                  value={subject}
                   onChange={(e) => { /* In a real app, you might manage this state */ }}
                   className="rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
@@ -205,7 +171,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                 <Label htmlFor="body" className="text-sm font-medium text-gray-700 dark:text-gray-300">Body</Label>
                 <Textarea
                   id="body"
-                  value={recommendedBody}
+                  value={body}
                   onChange={(e) => { /* In a real app, you might manage this state */ }}
                   rows={10}
                   className="rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -216,11 +182,11 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
               <Button
                 type="button"
                 onClick={() => {
-                  const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(recommendedSubject)}&body=${encodeURIComponent(recommendedBody)}`;
+                  const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                   window.location.href = mailtoLink;
                 }}
                 className="w-full sm:w-auto rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-3"
-                disabled={!recommendedSubject || !recommendedBody}
+                disabled={!subject || !body}
               >
                 <Mail className="mr-2 h-4 w-4" /> Open Email App
               </Button>
@@ -229,7 +195,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                 variant="outline"
                 onClick={handleCopyEmail}
                 className="w-full sm:w-auto rounded-lg border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-gray-700 text-sm py-2 px-3"
-                disabled={!recommendedSubject || !recommendedBody}
+                disabled={!subject || !body}
               >
                 <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
               </Button>
