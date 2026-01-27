@@ -107,7 +107,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
 
   if (isLoadingTemplates) {
     return (
-      <Card className="rounded-lg shadow-md border border-border bg-card p-4 flex flex-col justify-between h-full">
+      <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
         <Skeleton className="h-6 w-3/4 mb-2 rounded-md" />
         <Skeleton className="h-4 w-1/2 mb-4 rounded-md" />
         <Skeleton className="h-10 w-full rounded-lg" />
@@ -116,19 +116,19 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
   }
 
   return (
-    <Card className="rounded-lg shadow-md border border-border bg-card p-4 flex flex-col justify-between h-full">
+    <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4 flex flex-col justify-between h-full">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">{contact.emoji}</span>
-          <CardTitle className="text-lg font-semibold text-foreground leading-tight">
+          <CardTitle className="text-lg font-semibold text-foreground leading-tight truncate">
             {contact.name}
           </CardTitle>
         </div>
-        <CardDescription className="text-sm text-muted-foreground">
+        <CardDescription className="text-sm text-muted-foreground truncate">
           {contact.organization && `${contact.organization}, `}
           {contact.location && `${contact.location}`}
         </CardDescription>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-1 truncate">
           {contact.email}
         </p>
       </CardHeader>
@@ -151,7 +151,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
               <ExternalLink className="mr-2 h-4 w-4" /> Customize
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] rounded-lg p-6 bg-card text-card-foreground">
+          <DialogContent className="sm:max-w-[425px] rounded-xl p-6 bg-card text-card-foreground">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-foreground">Customize Email</DialogTitle>
               <DialogDescription className="text-muted-foreground">
@@ -287,18 +287,18 @@ const TopicDetail = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Skeleton className="h-48 w-full rounded-lg mb-8" />
-              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="h-48 w-full rounded-xl mb-8" />
+              <Skeleton className="h-32 w-full rounded-xl" />
             </div>
             <div className="lg:col-span-1">
-              <Skeleton className="h-64 w-full rounded-lg" />
+              <Skeleton className="h-64 w-full rounded-xl" />
             </div>
           </div>
           <div className="mt-12">
             <Skeleton className="h-8 w-1/3 mb-6 rounded-lg" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-48 w-full rounded-lg" />
+                <Skeleton key={i} className="h-48 w-full rounded-xl" />
               ))}
             </div>
           </div>
@@ -327,7 +327,7 @@ const TopicDetail = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Topic Overview Card */}
-          <Card className="lg:col-span-2 rounded-lg shadow-lg border border-border bg-card p-6">
+          <Card className="lg:col-span-2 rounded-xl shadow-lg border-none bg-card p-6">
             <CardHeader className="p-0 pb-4">
               <div className="flex items-center gap-3 mb-2">
                 {topic.emoji && <span className="text-5xl sm:text-6xl leading-none">{topic.emoji}</span>}
@@ -342,7 +342,7 @@ const TopicDetail = () => {
           </Card>
 
           {/* Personalization Panel */}
-          <Card className="lg:col-span-1 rounded-lg shadow-lg border border-border bg-card p-6">
+          <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-card p-6">
             <CardHeader className="p-0 pb-4">
               <CardTitle className="text-2xl font-bold text-foreground">Personalize Your Message</CardTitle>
             </CardHeader>
