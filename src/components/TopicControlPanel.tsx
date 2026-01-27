@@ -112,7 +112,7 @@ export const TopicControlPanel: React.FC = () => {
           <Button
             onClick={() => setIsOpen(true)}
             variant="ghost"
-            className="absolute top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2"
+            className="absolute top-4 left-4 z-50 rounded-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2 opacity-50"
             disabled={!hasPasswordConfigured}
           >
             <Settings className="h-5 w-5" />
