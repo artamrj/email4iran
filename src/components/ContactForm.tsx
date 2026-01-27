@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import *s z from 'zod';
+import * as z from 'zod';
 import { Plus, ChevronDown, XCircle } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
