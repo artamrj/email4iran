@@ -146,17 +146,20 @@ const getContactEmails = (contact: Contact) => {
   return { primaryEmail, ccEmails };
 };
 
+const encodeMailtoValue = (value: string) =>
+  encodeURIComponent(value.replace(/\r?\n/g, "\r\n"));
+
 const buildMailtoLink = (
   to: string,
   cc: string[],
   subject: string,
   body: string,
 ) => {
-  const params = new URLSearchParams();
-  if (cc.length) params.set("cc", cc.join(","));
-  if (subject) params.set("subject", subject);
-  if (body) params.set("body", body);
-  const query = params.toString();
+  const parts: string[] = [];
+  if (cc.length) parts.push(`cc=${encodeMailtoValue(cc.join(","))}`);
+  if (subject) parts.push(`subject=${encodeMailtoValue(subject)}`);
+  if (body) parts.push(`body=${encodeMailtoValue(body)}`);
+  const query = parts.join("&");
   return `mailto:${to}${query ? `?${query}` : ""}`;
 };
 
