@@ -194,6 +194,7 @@ const ContactCard: React.FC<{
     (requiredPlaceholders.city && !personalization.city.trim()) ||
     (requiredPlaceholders.country && !personalization.country.trim());
 
+  const isLongTitle = contact.name.trim().length > 32;
   const { primaryEmail, ccEmails } = useMemo(
     () => getContactEmails(contact),
     [contact],
@@ -236,7 +237,11 @@ const ContactCard: React.FC<{
 
   if (isLoadingTemplates) {
     return (
-      <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
+      <Card
+        className={`rounded-xl shadow-md border-none bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full ${
+          isLongTitle ? "col-span-full" : ""
+        }`}
+      >
         <Skeleton className="h-6 w-3/4 mb-2 rounded-md" />
         <Skeleton className="h-4 w-1/2 mb-4 rounded-md" />
         <Skeleton className="h-10 w-full rounded-lg" />
@@ -245,31 +250,62 @@ const ContactCard: React.FC<{
   }
 
   return (
-    <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4 flex flex-col justify-between h-full">
-      <CardHeader className="p-0 pb-2">
-        <div className="flex items-center gap-2 mb-1">
+    <Card
+      className={`rounded-xl shadow-md border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4 flex flex-col justify-between h-full ${
+        isLongTitle ? "col-span-full" : ""
+      }`}
+    >
+      <CardHeader className="p-0 pb-2 min-w-0">
+        <div className="flex items-center gap-2 mb-1 min-w-0">
           <span className="text-2xl">{contact.emoji}</span>
-          <CardTitle className="text-lg font-semibold text-foreground leading-tight truncate">
+          <CardTitle className="text-lg font-semibold text-foreground leading-snug break-words min-w-0">
             {contact.name}
           </CardTitle>
         </div>
-        <p className="text-sm text-muted-foreground truncate">
-          {contact.organization && `${contact.organization}`}
-          {contact.organization && contact.location && `, `}
-          {contact.location && `${contact.location}`}
-        </p>
-        <p className="text-xs text-muted-foreground mt-1 truncate">
-          {primaryEmail}
-          {ccEmails.length > 0 && ` (cc: ${ccEmails.join(", ")})`}
-        </p>
+        {(contact.organization || contact.location) && (
+          <div className="text-sm text-muted-foreground leading-snug break-words">
+            {contact.organization && <div>{contact.organization}</div>}
+            {contact.location && <div>{contact.location}</div>}
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="p-0 flex-grow flex items-end">
-        <p className="flex flex-wrap gap-1 text-xs font-medium text-muted-foreground">
-          Languages:{" "}
-          <span className="font-semibold">
-            {contact.languages.join(", ").toUpperCase()}
+      <CardContent className="p-0 flex-grow flex flex-col gap-3 pt-2">
+        <div className="space-y-1">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Email
+          </p>
+          <div className="text-sm text-foreground break-all">
+            {primaryEmail || "No email available"}
+          </div>
+          {ccEmails.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 pt-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">
+                CC
+              </span>
+              {ccEmails.map((email) => (
+                <span
+                  key={email}
+                  className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground"
+                >
+                  {email}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground mr-1">
+            Languages
           </span>
-        </p>
+          {contact.languages.map((lang) => (
+            <span
+              key={lang}
+              className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+            >
+              {lang.toUpperCase()}
+            </span>
+          ))}
+        </div>
       </CardContent>
       <CardFooter className="p-0 pt-4 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button
