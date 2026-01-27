@@ -6,7 +6,6 @@ import * as z from 'zod';
 import { ChevronDown, XCircle } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -124,12 +123,21 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative border border-border rounded-lg p-4 bg-card/30">
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="relative rounded-2xl border border-border/60 bg-gradient-to-b from-card/80 via-card/60 to-card/30 p-5 shadow-sm"
+    >
       <CollapsibleTrigger asChild>
-        <div className="flex items-center justify-between cursor-pointer py-2 -mx-2 px-2 rounded-md hover:bg-secondary/20 transition-colors">
-          <h5 className="text-md font-semibold text-foreground">
-            Email Template #{templateIndex + 1}: {languageLabel}
-          </h5>
+        <div className="flex items-center justify-between cursor-pointer rounded-xl px-3 py-3 -mx-1 hover:bg-muted/40 transition-colors">
+          <div className="flex flex-col gap-1">
+            <h5 className="text-md font-semibold text-foreground">
+              Email Template #{templateIndex + 1}
+            </h5>
+            <span className="inline-flex w-fit items-center rounded-full border border-border/70 bg-muted/60 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {languageLabel}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             {canRemoveTemplate && (
               <Button
@@ -150,62 +158,100 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
           </div>
         </div>
       </CollapsibleTrigger>
-      <CollapsibleContent className="grid gap-4 pt-4">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>Insert into {activeField === "subject" ? "subject" : "body"}:</span>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-7 rounded-full px-3 text-xs"
-            onClick={() =>
-              insertPlaceholder(
-                activeField === "subject"
-                  ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
-                  : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
-                "{{name}}",
-                activeField === "subject" ? subjectRef.current : bodyRef.current,
-              )
-            }
-          >
-            {"{{name}}"}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-7 rounded-full px-3 text-xs"
-            onClick={() =>
-              insertPlaceholder(
-                activeField === "subject"
-                  ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
-                  : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
-                "{{city}}",
-                activeField === "subject" ? subjectRef.current : bodyRef.current,
-              )
-            }
-          >
-            {"{{city}}"}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-7 rounded-full px-3 text-xs"
-            onClick={() =>
-              insertPlaceholder(
-                activeField === "subject"
-                  ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
-                  : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
-                "{{country}}",
-                activeField === "subject" ? subjectRef.current : bodyRef.current,
-              )
-            }
-          >
-            {"{{country}}"}
-          </Button>
+      <CollapsibleContent className="grid gap-5 pt-4">
+        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground/80">
+                Insert variables
+              </span>
+              <span className="text-muted-foreground/60">into</span>
+              <span className="capitalize">
+                {activeField === "subject" ? "subject" : "body"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={activeField === "subject" ? "secondary" : "outline"}
+                className="h-7 rounded-full px-3 text-xs"
+                onClick={() => {
+                  setActiveField("subject");
+                  subjectRef.current?.focus();
+                }}
+              >
+                Subject
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeField === "body" ? "secondary" : "outline"}
+                className="h-7 rounded-full px-3 text-xs"
+                onClick={() => {
+                  setActiveField("body");
+                  bodyRef.current?.focus();
+                }}
+              >
+                Body
+              </Button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-full px-3 text-xs border-dashed"
+              onClick={() =>
+                insertPlaceholder(
+                  activeField === "subject"
+                    ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
+                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                  "{{name}}",
+                  activeField === "subject" ? subjectRef.current : bodyRef.current,
+                )
+              }
+            >
+              {"{{name}}"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-full px-3 text-xs border-dashed"
+              onClick={() =>
+                insertPlaceholder(
+                  activeField === "subject"
+                    ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
+                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                  "{{city}}",
+                  activeField === "subject" ? subjectRef.current : bodyRef.current,
+                )
+              }
+            >
+              {"{{city}}"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-full px-3 text-xs border-dashed"
+              onClick={() =>
+                insertPlaceholder(
+                  activeField === "subject"
+                    ? `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailSubject`
+                    : `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`,
+                  "{{country}}",
+                  activeField === "subject" ? subjectRef.current : bodyRef.current,
+                )
+              }
+            >
+              {"{{country}}"}
+            </Button>
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-border/50 bg-card/40 p-4">
           <FormField
             control={control}
             name={`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailLanguage`}
@@ -248,6 +294,9 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                     onFocus={() => setActiveField("subject")}
                   />
                 </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  Keep it short and specific—placeholders work here too.
+                </p>
                 <FormMessage />
               </FormItem>
             )}
@@ -257,7 +306,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
           control={control}
           name={`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailBody`}
           render={({ field }) => (
-            <FormItem className="mb-2">
+            <FormItem className="mb-2 rounded-xl border border-border/50 bg-card/40 p-4">
               <FormLabel className="text-sm font-medium text-foreground">Body</FormLabel>
               <FormControl>
                 <Textarea
@@ -272,6 +321,9 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                   onFocus={() => setActiveField("body")}
                 />
               </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Aim for a friendly, clear tone and keep paragraphs short.
+              </p>
               <FormMessage />
             </FormItem>
           )}

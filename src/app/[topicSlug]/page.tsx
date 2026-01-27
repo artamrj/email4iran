@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   getTopicBySlug,
   getGroupsByTopicId,
@@ -54,9 +54,38 @@ const replacePlaceholders = (
   return result;
 };
 
-const getEmailBody = (
+const detectTemplatePlaceholders = (templates: EmailTemplate[]) => {
+  const usage = {
+    name: false,
+    city: false,
+    country: false,
+  };
+
+  for (const template of templates) {
+    const subject = template.subject ?? "";
+    const body = template.body ?? "";
+    const content = `${subject} ${body}`;
+
+    if (!usage.name && content.includes("{{name}}")) {
+      usage.name = true;
+    }
+    if (!usage.city && content.includes("{{city}}")) {
+      usage.city = true;
+    }
+    if (!usage.country && content.includes("{{country}}")) {
+      usage.country = true;
+    }
+
+    if (usage.name && usage.city && usage.country) {
+      break;
+    }
+  }
+
+  return usage;
+};
+
+const selectTemplateForContact = (
   templates: EmailTemplate[],
-  personalization: Personalization,
   contactLanguages: string[],
 ) => {
   let template: EmailTemplate | undefined;
@@ -78,6 +107,16 @@ const getEmailBody = (
   if (!template) {
     template = templates.find((t) => t.language === "en");
   }
+
+  return template;
+};
+
+const getEmailBody = (
+  templates: EmailTemplate[],
+  personalization: Personalization,
+  contactLanguages: string[],
+) => {
+  const template = selectTemplateForContact(templates, contactLanguages);
 
   if (!template) {
     return {
@@ -105,6 +144,23 @@ const ContactCard: React.FC<{
     if (!templates) return { subject: "", body: "" };
     return getEmailBody(templates, personalization, contact.languages);
   }, [templates, personalization, contact.languages]);
+
+  const selectedTemplate = useMemo(() => {
+    if (!templates) return undefined;
+    return selectTemplateForContact(templates, contact.languages);
+  }, [templates, contact.languages]);
+
+  const requiredPlaceholders = useMemo(() => {
+    if (!selectedTemplate) {
+      return { name: false, city: false, country: false };
+    }
+    return detectTemplatePlaceholders([selectedTemplate]);
+  }, [selectedTemplate]);
+
+  const isMissingRequiredField =
+    (requiredPlaceholders.name && !personalization.name.trim()) ||
+    (requiredPlaceholders.city && !personalization.city.trim()) ||
+    (requiredPlaceholders.country && !personalization.country.trim());
 
   // State for customized email content
   const [customSubject, setCustomSubject] = useState(subject);
@@ -178,7 +234,7 @@ const ContactCard: React.FC<{
         <Button
           onClick={handleSendRecommendedEmail}
           className="w-full min-w-0 flex-1 rounded-lg bg-primary text-primary-foreground text-sm py-2 px-3 hover:bg-primary/90"
-          disabled={!subject || !body}
+          disabled={!subject || !body || isMissingRequiredField}
         >
           <Mail className="mr-2 h-4 w-4" /> Send Email
         </Button>
@@ -248,7 +304,7 @@ const ContactCard: React.FC<{
                   window.location.href = mailtoLink;
                 }}
                 className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"
-                disabled={!customSubject || !customBody}
+                disabled={!customSubject || !customBody || isMissingRequiredField}
               >
                 <Mail className="mr-2 h-4 w-4" /> Open Email App
               </Button>
@@ -257,7 +313,7 @@ const ContactCard: React.FC<{
                 variant="outline"
                 onClick={() => handleCopyEmail(customSubject, customBody)}
                 className="w-full sm:w-auto rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-sm py-2 px-3"
-                disabled={!customSubject || !customBody}
+                disabled={!customSubject || !customBody || isMissingRequiredField}
               >
                 <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
               </Button>
@@ -326,6 +382,50 @@ const TopicDetail = () => {
     },
     enabled: !!groups,
   });
+
+  const allContacts = useMemo(() => {
+    if (!groups || !contactsByGroup) return [];
+    return groups.flatMap((group) => contactsByGroup[group.id] ?? []);
+  }, [contactsByGroup, groups]);
+
+  const templateQueries = useQueries({
+    queries: allContacts.map((contact) => ({
+      queryKey: ["emailTemplates", contact.id],
+      queryFn: () => getEmailTemplatesByContactId(contact.id),
+      enabled: !!contact.id && !isTopicInactive,
+    })),
+  });
+
+  const placeholderUsage = useMemo(() => {
+    const usage = {
+      name: false,
+      city: false,
+      country: false,
+    };
+
+    for (const query of templateQueries) {
+      const templates = query.data ?? [];
+      const detected = detectTemplatePlaceholders(templates);
+      usage.name = usage.name || detected.name;
+      usage.city = usage.city || detected.city;
+      usage.country = usage.country || detected.country;
+
+      if (usage.name && usage.city && usage.country) {
+        break;
+      }
+    }
+
+    return usage;
+  }, [templateQueries]);
+
+  const isLoadingPersonalization = templateQueries.some(
+    (query) => query.isLoading,
+  );
+
+  const hasPersonalizationFields =
+    placeholderUsage.name || placeholderUsage.city || placeholderUsage.country;
+  const showPersonalizationCard =
+    isLoadingPersonalization || hasPersonalizationFields;
 
   useEffect(() => {
     if (!topic || topic.is_active === false) return;
@@ -396,8 +496,16 @@ const TopicDetail = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-2 rounded-xl shadow-lg border-none bg-card p-6">
+        <div
+          className={`grid grid-cols-1 gap-8 ${
+            showPersonalizationCard ? "lg:grid-cols-3" : "lg:grid-cols-1"
+          }`}
+        >
+          <Card
+            className={`rounded-xl shadow-lg border-none bg-card p-6 ${
+              showPersonalizationCard ? "lg:col-span-2" : "lg:col-span-1"
+            }`}
+          >
             <CardHeader className="p-0 pb-4">
               <div className="flex items-center gap-3 mb-2">
                 {topic.emoji && (
@@ -415,83 +523,92 @@ const TopicDetail = () => {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-card p-6">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-2xl font-bold text-foreground">
-                Personalize Your Message
-              </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Enter your details to automatically customize email templates for
-                contacts.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 grid gap-4">
-              <div>
-                <Label
-                  htmlFor="name"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Your Name
-                </Label>
-                <Input
-                  id="name"
-                  value={personalization.name}
-                  onChange={(e) =>
-                    setPersonalization({
-                      ...personalization,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder="John Doe"
-                  className="rounded-lg border-border bg-input text-foreground"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="city"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Your City (Optional)
-                </Label>
-                <Input
-                  id="city"
-                  value={personalization.city}
-                  onChange={(e) =>
-                    setPersonalization({
-                      ...personalization,
-                      city: e.target.value,
-                    })
-                  }
-                  placeholder="New York"
-                  className="rounded-lg border-border bg-input text-foreground"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="country"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Your Country (Optional)
-                </Label>
-                <Input
-                  id="country"
-                  value={personalization.country}
-                  onChange={(e) =>
-                    setPersonalization({
-                      ...personalization,
-                      country: e.target.value,
-                    })
-                  }
-                  placeholder="USA"
-                  className="rounded-lg border-border bg-input text-foreground"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Your personalization details are used to customize email
-                templates and are not stored.
-              </p>
-            </CardContent>
-          </Card>
+          {showPersonalizationCard && (
+            <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-card p-6">
+              <CardHeader className="p-0 pb-4">
+                <CardTitle className="text-2xl font-bold text-foreground">
+                  Personalize Your Message
+                </CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Enter your details to automatically customize email templates for
+                  contacts.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 grid gap-4">
+                {placeholderUsage.name && (
+                  <div>
+                    <Label
+                      htmlFor="name"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Your Name (Required)
+                    </Label>
+                    <Input
+                      id="name"
+                      value={personalization.name}
+                      onChange={(e) =>
+                        setPersonalization({
+                          ...personalization,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="John Doe"
+                      className="rounded-lg border-border bg-input text-foreground"
+                    />
+                  </div>
+                )}
+                {placeholderUsage.city && (
+                  <div>
+                    <Label
+                      htmlFor="city"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Your City (Required)
+                    </Label>
+                    <Input
+                      id="city"
+                      value={personalization.city}
+                      onChange={(e) =>
+                        setPersonalization({
+                          ...personalization,
+                          city: e.target.value,
+                        })
+                      }
+                      placeholder="New York"
+                      className="rounded-lg border-border bg-input text-foreground"
+                    />
+                  </div>
+                )}
+                {placeholderUsage.country && (
+                  <div>
+                    <Label
+                      htmlFor="country"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Your Country (Required)
+                    </Label>
+                    <Input
+                      id="country"
+                      value={personalization.country}
+                      onChange={(e) =>
+                        setPersonalization({
+                          ...personalization,
+                          country: e.target.value,
+                        })
+                      }
+                      placeholder="USA"
+                      className="rounded-lg border-border bg-input text-foreground"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-2">
+                  {isLoadingPersonalization
+                    ? "Checking required personalization fields..."
+                    : "Your personalization details are used to customize email templates and are not stored."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="mt-12">
@@ -511,18 +628,11 @@ const TopicDetail = () => {
                   />
                 ))}
               </div>
-              <Separator className="my-8 bg-border rounded-full" />
             </div>
           ))}
         </div>
       </div>
 
-      <footer className="w-full py-6 text-center text-muted-foreground text-sm mt-auto">
-        <p>
-          &copy; {new Date().getFullYear()} Advocacy Campaign App. All rights
-          reserved.
-        </p>
-      </footer>
     </div>
   );
 };
