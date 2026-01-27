@@ -1,0 +1,5 @@
+name = "dyad-generated-app" # Replace with a unique name for your Cloudflare Pages project
+compatibility_date = "2024-01-01" # Use a recent date, e.g., "2024-01-01" or today's date
+
+[site]
+bucket = "./dist" # This tells Cloudflare to deploy the contents of your 'dist' directory
