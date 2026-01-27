@@ -376,7 +376,7 @@ export const AddTopicDialog: React.FC = () => {
                   <Separator className="my-6 bg-border rounded-full" />
 
                   {/* Inner useFieldArray for contacts within this group */}
-                  <ContactsFieldArray groupIndex={groupIndex} control={contactForm.control} languages={languages} />
+                  <ContactsFieldArray groupIndex={groupIndex} languages={languages} />
 
                   <Button
                     type="button"
@@ -453,7 +453,8 @@ export const AddTopicDialog: React.FC = () => {
   );
 };
 
-const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infer<typeof contactsFormSchema>>; languages: { value: string; label: string }[] }> = ({ groupIndex, control, languages }) => {
+const ContactsFieldArray: React.FC<{ groupIndex: number; languages: { value: string; label: string }[] }> = ({ groupIndex, languages }) => {
+  const { control, getValues, setValue } = useFormContext<z.infer<typeof contactsFormSchema>>();
   const { fields: contactFields, remove: removeContact } = useFieldArray({
     control,
     name: `groups.${groupIndex}.contacts`,
@@ -581,7 +582,6 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
           <EmailTemplatesFieldArray
             groupIndex={groupIndex}
             contactIndex={contactIndex}
-            control={control}
             languages={languages}
           />
 
@@ -589,8 +589,8 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
             type="button"
             variant="outline"
             onClick={() => {
-              const currentTemplates = control.getValues(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`);
-              control.setValue(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`, [
+              const currentTemplates = getValues(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`);
+              setValue(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`, [
                 ...currentTemplates,
                 {
                   emailLanguage: 'en',
@@ -613,9 +613,9 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infe
 const EmailTemplatesFieldArray: React.FC<{
   groupIndex: number;
   contactIndex: number;
-  control: Control<z.infer<typeof contactsFormSchema>>;
   languages: { value: string; label: string }[];
-}> = ({ groupIndex, contactIndex, control, languages }) => {
+}> = ({ groupIndex, contactIndex, languages }) => {
+  const { control } = useFormContext<z.infer<typeof contactsFormSchema>>();
   const { fields: emailTemplateFields, remove: removeEmailTemplate } = useFieldArray({
     control,
     name: `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`,
