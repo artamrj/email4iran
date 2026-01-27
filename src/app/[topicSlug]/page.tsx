@@ -304,10 +304,12 @@ const TopicDetail = () => {
       enabled: !!topicSlug,
     });
 
+  const isTopicInactive = topic?.is_active === false;
+
   const { data: groups, isLoading: isLoadingGroups } = useQuery<Group[]>({
     queryKey: ["groups", topic?.id],
     queryFn: () => getGroupsByTopicId(topic!.id),
-    enabled: !!topic?.id,
+    enabled: !!topic?.id && !isTopicInactive,
   });
 
   const { data: contactsByGroup, isLoading: isLoadingContacts } = useQuery<
@@ -326,7 +328,7 @@ const TopicDetail = () => {
   });
 
   useEffect(() => {
-    if (!topic) return;
+    if (!topic || topic.is_active === false) return;
     document.title = topic.name;
     const metaDescription = document.querySelector('meta[name="description"]');
     metaDescription?.setAttribute("content", topic.description);
@@ -336,7 +338,7 @@ const TopicDetail = () => {
     return null;
   }
 
-  if (!isLoadingTopic && !topic && !isErrorTopic) {
+  if (!isLoadingTopic && (!topic || isTopicInactive) && !isErrorTopic) {
     return <NotFoundState />;
   }
 

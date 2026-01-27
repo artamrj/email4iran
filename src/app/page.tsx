@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Topic } from "@/types/supabase";
-import { AddTopicDialog } from "@/components/AddTopicDialog";
+import { TopicControlPanel } from "@/components/TopicControlPanel";
 
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
   return (
@@ -50,6 +50,8 @@ const Index = () => {
     queryFn: getTopics,
   });
 
+  const activeTopics = topics?.filter((topic) => topic.is_active !== false);
+
   if (isError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -68,7 +70,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 sm:p-8 relative">
-      <AddTopicDialog />
+      <TopicControlPanel />
       <div className="container mx-auto max-w-6xl py-12">
         <h1 className="text-5xl font-extrabold text-center mb-6 text-foreground drop-shadow-lg">
           Email4Iran
@@ -95,11 +97,15 @@ const Index = () => {
               </Card>
             ))}
           </div>
-        ) : (
+        ) : activeTopics?.length ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {topics?.map((topic) => (
+            {activeTopics.map((topic) => (
               <TopicCard key={topic.id} topic={topic} />
             ))}
+          </div>
+        ) : (
+          <div className="text-center text-muted-foreground py-12">
+            No active topics yet. Check back soon.
           </div>
         )}
       </div>

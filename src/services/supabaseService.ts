@@ -4,7 +4,7 @@ import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase'; // Upda
 export const getTopics = async (): Promise<Topic[]> => {
   const { data, error } = await supabase
     .from('topics')
-    .select('id, slug, name, description, emoji'); // Removed default_language
+    .select('id, slug, name, description, emoji, is_active'); // Removed default_language
   if (error) throw error;
   return data;
 };
@@ -12,7 +12,7 @@ export const getTopics = async (): Promise<Topic[]> => {
 export const getTopicBySlug = async (slug: string): Promise<Topic | null> => {
   const { data, error } = await supabase
     .from('topics')
-    .select('id, slug, name, description, emoji') // Removed default_language
+    .select('id, slug, name, description, emoji, is_active') // Removed default_language
     .eq('slug', slug)
     .single();
   if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "No rows found"
@@ -52,6 +52,17 @@ export const createTopic = async (topicData: Omit<Topic, 'id'>): Promise<Topic> 
   const { data, error } = await supabase
     .from('topics')
     .insert([topicData])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateTopicActive = async (topicId: string, isActive: boolean): Promise<Topic> => {
+  const { data, error } = await supabase
+    .from('topics')
+    .update({ is_active: isActive })
+    .eq('id', topicId)
     .select()
     .single();
   if (error) throw error;

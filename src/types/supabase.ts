@@ -4,7 +4,7 @@ export interface Topic {
   name: string; // Changed from title
   description: string; // Changed from shortDescription and longDescription
   emoji?: string; // Added new field
-  // Removed default_language: string;
+  is_active?: boolean; // Control visibility in the app
 }
 
 export interface Group { // Renamed from Category

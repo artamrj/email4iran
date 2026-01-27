@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Plus, ChevronLeft, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -133,11 +133,27 @@ const contactsFormSchema = z.object({
   groups: z.array(groupEntrySchema).min(1, { message: "At least one group is required." }),
 });
 
-export const AddTopicDialog: React.FC = () => {
+interface AddTopicDialogProps {
+  triggerLabel?: string;
+  triggerClassName?: string;
+  triggerVariant?: ButtonProps["variant"];
+  triggerSize?: ButtonProps["size"];
+  showTooltip?: boolean;
+  skipPassword?: boolean;
+}
+
+export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
+  triggerLabel = "Add New Topic",
+  triggerClassName,
+  triggerVariant = "ghost",
+  triggerSize = "default",
+  showTooltip = true,
+  skipPassword = false,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [tempTopicData, setTempTopicData] = useState<TopicFormValues | null>(null);
-  const [isPasswordVerified, setIsPasswordVerified] = useState(false); // New state
+  const [isPasswordVerified, setIsPasswordVerified] = useState(skipPassword); // New state
   const queryClient = useQueryClient();
 
   const hasPasswordConfigured = !!process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD; // Check if env var is set
@@ -231,6 +247,7 @@ export const AddTopicDialog: React.FC = () => {
 
       showSuccess('Topic, groups, contacts, and email templates added successfully!');
       queryClient.invalidateQueries({ queryKey: ['topics'] });
+      queryClient.invalidateQueries({ queryKey: ['topics', 'admin'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['contactsByGroups'] });
       queryClient.invalidateQueries({ queryKey: ['emailTemplates'] });
@@ -252,7 +269,7 @@ export const AddTopicDialog: React.FC = () => {
       topicForm.reset();
       contactForm.reset();
       setTempTopicData(null); // Clear temporary data on close
-      setIsPasswordVerified(false); // Reset password verification on close
+      setIsPasswordVerified(skipPassword); // Reset password verification on close
     }
   };
 
@@ -266,26 +283,36 @@ export const AddTopicDialog: React.FC = () => {
     setIsPasswordVerified(false); // Ensure it's reset
   };
 
+  const triggerButton = (
+    <Button
+      onClick={() => setIsOpen(true)}
+      variant={triggerVariant}
+      size={triggerSize}
+      className={
+        triggerClassName ??
+        "absolute top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2"
+      }
+      disabled={!hasPasswordConfigured} // Disable if password not configured
+    >
+      <Plus className="h-5 w-5" />
+      <span>{triggerLabel}</span>
+    </Button>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Button
-            onClick={() => setIsOpen(true)}
-            variant="ghost"
-            className="absolute top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2"
-            disabled={!hasPasswordConfigured} // Disable if password not configured
-          >
-            <Plus className="h-5 w-5" />
-            <span>Add New Topic</span>
-          </Button>
-        </TooltipTrigger>
-        {!hasPasswordConfigured && (
-          <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
-            <p>Please set `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` in your .env.local file to enable this feature.</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
+      {showTooltip ? (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>{triggerButton}</TooltipTrigger>
+          {!hasPasswordConfigured && (
+            <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
+              <p>Please set `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` in your .env.local file to enable this feature.</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      ) : (
+        triggerButton
+      )}
       <DialogContent className="sm:max-w-[700px] rounded-xl p-6 bg-card text-card-foreground overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">
