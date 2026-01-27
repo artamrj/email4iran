@@ -1,4 +1,4 @@
-name = 'email4iran'
-compatibility_date = "2024-01-01" # Use a recent date, e.g., "2024-01-01" or today's date
+name = "email4iran"
+compatibility_date = "2025-01-01"
 
-assets = { directory = "./dist" } # Using the modern assets binding for static files
+assets = { directory = "./dist" }
