@@ -3,11 +3,15 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 
+const favicon = new URL("./favicon.ico", import.meta.url);
+
 export const metadata: Metadata = {
   title: "Email4Iran",
   description: "Explore topics and send emails to key contacts.",
   icons: {
-    icon: "/favicon.ico",
+    icon: favicon,
+    shortcut: favicon,
+    apple: favicon,
   },
 };
 

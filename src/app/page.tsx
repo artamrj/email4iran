@@ -36,8 +36,13 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
             {topic.description}
           </p>
         </CardContent>
-        <CardFooter className="flex flex-wrap gap-2 pt-0">
-          {/* Removed tags as it's no longer in schema */}
+        <CardFooter className="pt-0">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full bg-destructive px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-destructive-foreground transition duration-200 ease-out hover:bg-destructive/90 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
+          >
+            Get Started
+          </button>
         </CardFooter>
       </Card>
     </Link>
