@@ -4,7 +4,7 @@ export interface Topic {
   name: string; // Changed from title
   description: string; // Changed from shortDescription and longDescription
   emoji?: string; // Added new field
-  default_language: string; // Changed from defaultLanguage
+  // Removed default_language: string;
 }
 
 export interface Group { // Renamed from Category
