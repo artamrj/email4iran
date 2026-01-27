@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form'; // Import useFieldArray
+import { useForm, useFieldArray, useFormContext, Control } from 'react-hook-form'; // Import useFieldArray and Control
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Plus, ChevronLeft, CheckCircle2, XCircle } from 'lucide-react'; // Added XCircle for remove button
@@ -45,10 +45,8 @@ const topicFormSchema = z.object({
   // Removed default_language
 });
 
-// --- Step 2: Group, Contact, Email Template Schema for a single entry ---
-const contactEntrySchema = z.object({
-  groupName: z.string().min(1, { message: "Group name is required." }),
-  groupDescription: z.string().optional(),
+// --- Step 2: Nested Schemas ---
+const contactSchema = z.object({
   contactName: z.string().min(1, { message: "Contact name is required." }),
   contactOrganization: z.string().optional(),
   contactLocation: z.string().optional(),
@@ -60,9 +58,14 @@ const contactEntrySchema = z.object({
   emailBody: z.string().min(1, { message: "Email body is required." }),
 });
 
-// Schema for the entire Step 2 form, containing an array of contact entries
+const groupEntrySchema = z.object({
+  groupName: z.string().min(1, { message: "Group name is required." }),
+  groupDescription: z.string().optional(),
+  contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
+});
+
 const contactsFormSchema = z.object({
-  contacts: z.array(contactEntrySchema).min(1, { message: "At least one contact is required." }),
+  groups: z.array(groupEntrySchema).min(1, { message: "At least one group is required." }),
 });
 
 export const AddTopicDialog: React.FC = () => {
@@ -84,25 +87,28 @@ export const AddTopicDialog: React.FC = () => {
   const contactForm = useForm<z.infer<typeof contactsFormSchema>>({
     resolver: zodResolver(contactsFormSchema),
     defaultValues: {
-      contacts: [{
+      groups: [{
         groupName: '',
         groupDescription: '',
-        contactName: '',
-        contactOrganization: '',
-        contactLocation: '',
-        contactEmoji: '',
-        contactEmail: '',
-        contactLanguages: ['en'],
-        emailLanguage: 'en',
-        emailSubject: '',
-        emailBody: '',
+        contacts: [{ // Default for one contact within the first group
+          contactName: '',
+          contactOrganization: '',
+          contactLocation: '',
+          contactEmoji: '',
+          contactEmail: '',
+          contactLanguages: ['en'],
+          emailLanguage: 'en',
+          emailSubject: '',
+          emailBody: '',
+        }],
       }],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  // Outer useFieldArray for groups
+  const { fields: groupFields, append: appendGroup, remove: removeGroup } = useFieldArray({
     control: contactForm.control,
-    name: "contacts",
+    name: "groups",
   });
 
   const handleTopicSubmit = async (values: z.infer<typeof topicFormSchema>) => {
@@ -124,39 +130,41 @@ export const AddTopicDialog: React.FC = () => {
     }
 
     try {
-      for (const contactEntry of values.contacts) {
+      for (const groupEntry of values.groups) { // Iterate through groups
         // Create Group
         const groupData: Omit<Group, 'id'> = {
           topic_id: newTopicId,
-          name: contactEntry.groupName,
-          description: contactEntry.groupDescription,
+          name: groupEntry.groupName,
+          description: groupEntry.groupDescription,
         };
         const createdGroup = await createGroup(groupData);
 
-        // Create Contact
-        const contactData: Omit<Contact, 'id'> = {
-          group_id: createdGroup.id,
-          name: contactEntry.contactName,
-          organization: contactEntry.contactOrganization || null,
-          location: contactEntry.contactLocation || null,
-          emoji: contactEntry.contactEmoji || '👤', // Default emoji if none provided
-          email: contactEntry.contactEmail,
-          languages: contactEntry.contactLanguages,
-        };
-        const createdContact = await createContact(contactData);
+        for (const contactEntry of groupEntry.contacts) { // Iterate through contacts within the group
+          // Create Contact
+          const contactData: Omit<Contact, 'id'> = {
+            group_id: createdGroup.id, // Link to the created group
+            name: contactEntry.contactName,
+            organization: contactEntry.contactOrganization || null,
+            location: contactEntry.contactLocation || null,
+            emoji: contactEntry.contactEmoji || '👤',
+            email: contactEntry.contactEmail,
+            languages: contactEntry.contactLanguages,
+          };
+          const createdContact = await createContact(contactData);
 
-        // Create Email Template
-        const emailTemplateData: Omit<EmailTemplate, 'id'> = {
-          contact_id: createdContact.id,
-          language: contactEntry.emailLanguage,
-          subject: contactEntry.emailSubject,
-          body: contactEntry.emailBody,
-        };
-        await createEmailTemplate(emailTemplateData);
+          // Create Email Template
+          const emailTemplateData: Omit<EmailTemplate, 'id'> = {
+            contact_id: createdContact.id, // Link to the created contact
+            language: contactEntry.emailLanguage,
+            subject: contactEntry.emailSubject,
+            body: contactEntry.emailBody,
+          };
+          await createEmailTemplate(emailTemplateData);
+        }
       }
 
-      showSuccess('All contacts and email templates added successfully!');
-      queryClient.invalidateQueries({ queryKey: ['topics'] }); // Invalidate topics to refresh the list
+      showSuccess('All groups, contacts, and email templates added successfully!');
+      queryClient.invalidateQueries({ queryKey: ['topics'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['contactsByGroups'] });
       queryClient.invalidateQueries({ queryKey: ['emailTemplates'] });
@@ -258,7 +266,6 @@ export const AddTopicDialog: React.FC = () => {
                   </FormItem>
                 )}
               />
-              {/* Removed default_language field */}
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
                   Next: Add Contacts <CheckCircle2 className="ml-2 h-4 w-4" />
@@ -271,27 +278,27 @@ export const AddTopicDialog: React.FC = () => {
         {step === 2 && (
           <Form {...contactForm}>
             <form onSubmit={contactForm.handleSubmit(handleContactsSubmit)} className="grid gap-4 py-4">
-              {fields.map((field, index) => (
-                <div key={field.id} className="relative border border-border rounded-xl p-4 mb-4 bg-secondary/10">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Contact Entry #{index + 1}</h3>
-                  {fields.length > 1 && (
+              {groupFields.map((groupField, groupIndex) => ( // Outer loop for groups
+                <div key={groupField.id} className="relative border border-border rounded-xl p-6 mb-6 bg-secondary/10">
+                  <h3 className="text-xl font-bold text-foreground mb-4">Group #{groupIndex + 1}</h3>
+                  {groupFields.length > 1 && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => remove(index)}
-                      className="absolute top-2 right-2 text-destructive hover:bg-destructive/10 rounded-full"
+                      onClick={() => removeGroup(groupIndex)}
+                      className="absolute top-4 right-4 text-destructive hover:bg-destructive/10 rounded-full"
                     >
                       <XCircle className="h-5 w-5" />
-                      <span className="sr-only">Remove Contact</span>
+                      <span className="sr-only">Remove Group</span>
                     </Button>
                   )}
 
                   {/* Group Details */}
-                  <h4 className="text-md font-semibold text-foreground mt-2 mb-2">Group Details</h4>
+                  <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">Group Details</h4>
                   <FormField
                     control={contactForm.control}
-                    name={`contacts.${index}.groupName`}
+                    name={`groups.${groupIndex}.groupName`} // Corrected name
                     render={({ field }) => (
                       <FormItem className="mb-2">
                         <FormLabel className="text-sm font-medium text-foreground">Group Name</FormLabel>
@@ -304,7 +311,7 @@ export const AddTopicDialog: React.FC = () => {
                   />
                   <FormField
                     control={contactForm.control}
-                    name={`contacts.${index}.groupDescription`}
+                    name={`groups.${groupIndex}.groupDescription`} // Corrected name
                     render={({ field }) => (
                       <FormItem className="mb-4">
                         <FormLabel className="text-sm font-medium text-foreground">Group Description (Optional)</FormLabel>
@@ -315,180 +322,60 @@ export const AddTopicDialog: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  <Separator className="my-4 bg-border rounded-full" />
+                  <Separator className="my-6 bg-border rounded-full" />
 
-                  {/* Contact Details */}
-                  <h4 className="text-md font-semibold text-foreground mt-4 mb-2">Contact Details</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <FormField
-                      control={contactForm.control}
-                      name={`contacts.${index}.contactName`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Contact Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Minister of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={contactForm.control}
-                      name={`contacts.${index}.contactOrganization`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Organization (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ministry of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <FormField
-                      control={contactForm.control}
-                      name={`contacts.${index}.contactLocation`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Location (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Tehran, Iran" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={contactForm.control}
-                      name={`contacts.${index}.contactEmoji`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., 🇮🇷)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="🇮🇷" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <FormField
-                    control={contactForm.control}
-                    name={`contacts.${index}.contactEmail`}
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel className="text-sm font-medium text-foreground">Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="contact@example.com" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={contactForm.control}
-                    name={`contacts.${index}.contactLanguages`}
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel className="text-sm font-medium text-foreground">Contact Languages</FormLabel>
-                        <Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value[0]}>
-                          <FormControl>
-                            <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
-                              <SelectValue placeholder="Select a language" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="fa">Farsi</SelectItem>
-                            <SelectItem value="local">Local (dynamic)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-xs text-muted-foreground">
-                          Select the primary language for this contact.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Separator className="my-4 bg-border rounded-full" />
+                  {/* Inner useFieldArray for contacts within this group */}
+                  <ContactsFieldArray groupIndex={groupIndex} control={contactForm.control} />
 
-                  {/* Email Template Details */}
-                  <h4 className="text-md font-semibold text-foreground mt-4 mb-2">Email Template</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <FormField
-                      control={contactForm.control}
-                      name={`contacts.${index}.emailLanguage`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Template Language</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
-                                <SelectValue placeholder="Select template language" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
-                              <SelectItem value="en">English</SelectItem>
-                              <SelectItem value="fa">Farsi</SelectItem>
-                              <SelectItem value="local">Local (dynamic)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={contactForm.control}
-                      name={`contacts.${index}.emailSubject`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-foreground">Subject</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Regarding the recent events in {{city}}" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <FormField
-                    control={contactForm.control}
-                    name={`contacts.${index}.emailBody`}
-                    render={({ field }) => (
-                      <FormItem className="mb-2">
-                        <FormLabel className="text-sm font-medium text-foreground">Body</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Dear {{name}}, I am writing to express my concern..." rows={6} className="rounded-lg border-border bg-input text-foreground" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      // Append a new contact to the current group
+                      const currentContacts = contactForm.getValues(`groups.${groupIndex}.contacts`);
+                      contactForm.setValue(`groups.${groupIndex}.contacts`, [
+                        ...currentContacts,
+                        {
+                          contactName: '',
+                          contactOrganization: '',
+                          contactLocation: '',
+                          contactEmoji: '',
+                          contactEmail: '',
+                          contactLanguages: ['en'],
+                          emailLanguage: 'en',
+                          emailSubject: '',
+                          emailBody: '',
+                        }
+                      ]);
+                    }}
+                    className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add Another Contact to this Group
+                  </Button>
                 </div>
               ))}
 
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => append({
+                onClick={() => appendGroup({ // Append a new group
                   groupName: '',
                   groupDescription: '',
-                  contactName: '',
-                  contactOrganization: '',
-                  contactLocation: '',
-                  contactEmoji: '',
-                  contactEmail: '',
-                  contactLanguages: ['en'],
-                  emailLanguage: 'en',
-                  emailSubject: '',
-                  emailBody: '',
+                  contacts: [{ // Default for one contact within the new group
+                    contactName: '',
+                    contactOrganization: '',
+                    contactLocation: '',
+                    contactEmoji: '',
+                    contactEmail: '',
+                    contactLanguages: ['en'],
+                    emailLanguage: 'en',
+                    emailSubject: '',
+                    emailBody: '',
+                  }],
                 })}
-                className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
+                className="w-full rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-base py-3 mt-4"
               >
-                <Plus className="mr-2 h-4 w-4" /> Add Another Contact
+                <Plus className="mr-2 h-4 w-4" /> Add Another Group
               </Button>
 
               <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-4">
@@ -509,5 +396,186 @@ export const AddTopicDialog: React.FC = () => {
         )}
       </DialogContent>
     </Dialog>
+  );
+};
+
+// Helper component for nested field array
+const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infer<typeof contactsFormSchema>> }> = ({ groupIndex, control }) => {
+  const { fields: contactFields, remove: removeContact } = useFieldArray({
+    control,
+    name: `groups.${groupIndex}.contacts`,
+  });
+
+  return (
+    <div className="grid gap-4">
+      {contactFields.map((contactField, contactIndex) => (
+        <div key={contactField.id} className="relative border border-border rounded-lg p-4 bg-card/50">
+          <h4 className="text-lg font-semibold text-foreground mb-4">Contact #{contactIndex + 1}</h4>
+          {contactFields.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => removeContact(contactIndex)}
+              className="absolute top-2 right-2 text-destructive hover:bg-destructive/10 rounded-full"
+            >
+              <XCircle className="h-4 w-4" />
+              <span className="sr-only">Remove Contact</span>
+            </Button>
+          )}
+
+          {/* Contact Details */}
+          <h5 className="text-md font-semibold text-foreground mt-2 mb-2">Contact Details</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <FormField
+              control={control}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.contactName`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Contact Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Minister of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.contactOrganization`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Organization (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ministry of Justice" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <FormField
+              control={control}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.contactLocation`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Location (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Tehran, Iran" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.contactEmoji`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., 🇮🇷)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="🇮🇷" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={control}
+            name={`groups.${groupIndex}.contacts.${contactIndex}.contactEmail`}
+            render={({ field }) => (
+              <FormItem className="mb-4">
+                <FormLabel className="text-sm font-medium text-foreground">Email</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="contact@example.com" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`groups.${groupIndex}.contacts.${contactIndex}.contactLanguages`}
+            render={({ field }) => (
+              <FormItem className="mb-4">
+                <FormLabel className="text-sm font-medium text-foreground">Contact Languages</FormLabel>
+                <Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value[0]}>
+                  <FormControl>
+                    <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
+                      <SelectValue placeholder="Select a language" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="fa">Farsi</SelectItem>
+                    <SelectItem value="local">Local (dynamic)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs text-muted-foreground">
+                  Select the primary language for this contact.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Separator className="my-4 bg-border rounded-full" />
+
+          {/* Email Template Details */}
+          <h5 className="text-md font-semibold text-foreground mt-4 mb-2">Email Template</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <FormField
+              control={control}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.emailLanguage`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Template Language</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
+                        <SelectValue placeholder="Select template language" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="fa">Farsi</SelectItem>
+                      <SelectItem value="local">Local (dynamic)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`groups.${groupIndex}.contacts.${contactIndex}.emailSubject`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">Subject</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Regarding the recent events in {{city}}" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={control}
+            name={`groups.${groupIndex}.contacts.${contactIndex}.emailBody`}
+            render={({ field }) => (
+              <FormItem className="mb-2">
+                <FormLabel className="text-sm font-medium text-foreground">Body</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Dear {{name}}, I am writing to express my concern..." rows={6} className="rounded-lg border-border bg-input text-foreground" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      ))}
+    </div>
   );
 };
