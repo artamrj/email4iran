@@ -325,15 +325,21 @@ const TopicDetail = () => {
           </Button>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 leading-tight">
-          {topic.name}
-        </h1>
-        <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-4">
-          {topic.description}
-        </p>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Removed Topic Context Block */}
+          {/* Main Topic Overview Card */}
+          <Card className="lg:col-span-2 rounded-xl shadow-lg border-none bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-2">
+                {topic.name}
+              </CardTitle>
+              <CardDescription className="text-lg sm:text-xl text-gray-700 dark:text-gray-300">
+                {topic.description}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 mt-4">
+              <MarkdownRenderer content={topic.description} />
+            </CardContent>
+          </Card>
 
           {/* Personalization Panel */}
           <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-6">
