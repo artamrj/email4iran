@@ -1,7 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getTopics } from '@/services/supabaseService';
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
@@ -93,7 +92,6 @@ const Index = () => {
           </div>
         )}
       </div>
-      <MadeWithDyad />
     </div>
   );
 };
