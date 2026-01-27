@@ -40,63 +40,91 @@ import { showError, showSuccess } from "@/utils/toast";
 import { ContactForm } from "@/components/ContactForm";
 import { languages } from "@/constants/languages";
 import { buildCcEmails, joinEmailList, parseEmailList, selectPrimaryEmail } from "@/utils/email";
+import { useTranslation } from "@/lib/i18n";
+import { type ContactsFormValues } from "@/types/forms";
 
-const emailTemplateSchema = z.object({
-  templateId: z.string().optional(),
-  emailLanguage: z.string().min(1, { message: "Email template language is required." }),
-  emailSubject: z.string().min(1, { message: "Email subject is required." }),
-  emailBody: z.string().min(1, { message: "Email body is required." }),
-});
+type Translator = ReturnType<typeof useTranslation>["t"];
 
-const contactSchema = z.object({
-  contactId: z.string().optional(),
-  contactName: z.string().min(1, { message: "Contact name is required." }),
-  contactEmoji: z.string().optional(),
-  templateSourceContactIndex: z.number().int().nonnegative().optional(),
-  contactEmail: z
-    .string()
-    .min(1, { message: "Email is required." })
-    .refine(
-      (val) => {
-        const emails = parseEmailList(val);
-        if (emails.length === 0) return false;
-        return emails.every((email) => z.string().email().safeParse(email).success);
-      },
-      { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." },
-    ),
-  contactPrimaryEmail: z.string().optional(),
-  contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
-  emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
-}).superRefine((data, ctx) => {
-  const emails = parseEmailList(data.contactEmail);
-  if (emails.length > 1) {
-    if (!data.contactPrimaryEmail) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Please select a primary email address.",
-        path: ["contactPrimaryEmail"],
-      });
-    } else if (!emails.includes(data.contactPrimaryEmail)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Primary email must be one of the listed addresses.",
-        path: ["contactPrimaryEmail"],
-      });
-    }
-  }
-});
+const buildEmailTemplateSchema = (t: Translator) =>
+  z.object({
+    templateId: z.string().optional(),
+    emailLanguage: z
+      .string()
+      .min(1, { message: t("validationEmailTemplateLanguageRequired") }),
+    emailSubject: z
+      .string()
+      .min(1, { message: t("validationEmailSubjectRequired") }),
+    emailBody: z
+      .string()
+      .min(1, { message: t("validationEmailBodyRequired") }),
+  });
 
-const groupEntrySchema = z.object({
-  groupId: z.string().optional(),
-  groupName: z.string().min(1, { message: "Group name is required." }),
-  contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
-});
+const buildContactSchema = (t: Translator) => {
+  const emailTemplateSchema = buildEmailTemplateSchema(t);
+  return z
+    .object({
+      contactId: z.string().optional(),
+      contactName: z
+        .string()
+        .min(1, { message: t("validationContactNameRequired") }),
+      contactEmoji: z.string().optional(),
+      templateSourceContactIndex: z.number().int().nonnegative().optional(),
+      contactEmail: z
+        .string()
+        .min(1, { message: t("validationEmailRequired") })
+        .refine(
+          (val) => {
+            const emails = parseEmailList(val);
+            if (emails.length === 0) return false;
+            return emails.every((email) => z.string().email().safeParse(email).success);
+          },
+          { message: t("validationEmailInvalid") },
+        ),
+      contactPrimaryEmail: z.string().optional(),
+      contactLanguages: z
+        .array(z.string())
+        .min(1, { message: t("validationLanguageRequired") }),
+      emailTemplates: z
+        .array(emailTemplateSchema)
+        .min(1, { message: t("validationEmailTemplateRequired") }),
+    })
+    .superRefine((data, ctx) => {
+      const emails = parseEmailList(data.contactEmail);
+      if (emails.length > 1) {
+        if (!data.contactPrimaryEmail) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t("validationPrimaryEmailRequired"),
+            path: ["contactPrimaryEmail"],
+          });
+        } else if (!emails.includes(data.contactPrimaryEmail)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t("validationPrimaryEmailMustBeListed"),
+            path: ["contactPrimaryEmail"],
+          });
+        }
+      }
+    });
+};
 
-const contactsFormSchema = z.object({
-  groups: z.array(groupEntrySchema).min(1, { message: "At least one group is required." }),
-});
+const buildGroupEntrySchema = (t: Translator) => {
+  const contactSchema = buildContactSchema(t);
+  return z.object({
+    groupId: z.string().optional(),
+    groupName: z.string().min(1, { message: t("validationGroupNameRequired") }),
+    contacts: z
+      .array(contactSchema)
+      .min(1, { message: t("validationContactRequiredPerGroup") }),
+  });
+};
 
-type ContactsFormValues = z.infer<typeof contactsFormSchema>;
+const buildContactsFormSchema = (t: Translator) => {
+  const groupEntrySchema = buildGroupEntrySchema(t);
+  return z.object({
+    groups: z.array(groupEntrySchema).min(1, { message: t("validationGroupRequired") }),
+  });
+};
 
 type AdminContact = Contact & { emailTemplates: EmailTemplate[] };
 
@@ -131,9 +159,12 @@ const blankGroup = () => ({
 });
 
 export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
+
+  const contactsFormSchema = useMemo(() => buildContactsFormSchema(t), [t]);
 
   const contactForm = useForm<ContactsFormValues>({
     resolver: zodResolver(contactsFormSchema),
@@ -337,7 +368,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
         }
       }
 
-      showSuccess("Topic contacts updated successfully!");
+      showSuccess(t("topicContactsUpdated"));
       queryClient.invalidateQueries({ queryKey: ["groups", topic.id] });
       queryClient.invalidateQueries({ queryKey: ["contactsByGroups"] });
       queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
@@ -345,7 +376,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to update topic contacts:", error);
-      showError("Failed to update topic contacts. Please try again.");
+      showError(t("failedUpdateTopicContacts"));
     } finally {
       setIsSaving(false);
     }
@@ -355,16 +386,16 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="rounded-lg">
-          Edit Groups & Emails
+          {t("editGroupsEmails")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[860px] rounded-xl p-6 bg-card text-card-foreground overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">
-            Edit {topic.name}
+            {t("editTopicTitle", { topicName: topic.name })}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Update groups, contacts, and email templates or add new entries.
+            {t("editTopicDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -379,7 +410,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
           </div>
         ) : isError ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load groups and contacts. Please check your Supabase connection and schema.
+            {t("failedLoadGroupsContacts")}
           </div>
         ) : (
           <>
@@ -388,7 +419,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
               <form onSubmit={contactForm.handleSubmit(handleSave)} className="grid gap-4">
                 {groupFields.length === 0 && (
                   <div className="rounded-lg border border-border bg-secondary/10 p-4 text-sm text-muted-foreground">
-                    No groups found for this topic yet. Add your first group below.
+                    {t("noGroupsFound")}
                   </div>
                 )}
                 {groupFields.map((groupField, groupIndex) => {
@@ -401,7 +432,10 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2 -mx-2 px-2 rounded-md hover:bg-secondary/20 transition-colors">
                           <h3 className="text-xl font-bold text-foreground">
-                            Group #{groupIndex + 1}: {groupName || "New Group"}
+                            {t("groupTitle", {
+                              index: groupIndex + 1,
+                              name: groupName || t("newGroup"),
+                            })}
                           </h3>
                           <div className="flex items-center gap-2">
                             {canRemoveGroup && (
@@ -416,7 +450,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                                 className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8"
                               >
                                 <XCircle className="h-5 w-5" />
-                                <span className="sr-only">Remove Group</span>
+                                <span className="sr-only">{t("removeGroup")}</span>
                               </Button>
                             )}
                             <ChevronDown className="h-5 w-5 transition-transform rotate-0" />
@@ -424,13 +458,17 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                         </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="grid gap-4 pt-4">
-                        <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">Group Details</h4>
+                        <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">
+                          {t("groupDetails")}
+                        </h4>
                         <div className="grid gap-2">
-                          <label className="text-sm font-medium text-foreground">Group Name</label>
+                          <label className="text-sm font-medium text-foreground">
+                            {t("groupNameLabel")}
+                          </label>
                           <Input
                             className="rounded-lg border-border bg-input text-foreground"
                             {...contactForm.register(`groups.${groupIndex}.groupName`)}
-                            placeholder="Government Officials"
+                            placeholder={t("groupNamePlaceholder")}
                           />
                           {contactForm.formState.errors.groups?.[groupIndex]?.groupName && (
                             <p className="text-xs text-destructive">
@@ -441,7 +479,9 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
 
                         <Separator className="my-6 bg-border rounded-full" />
 
-                        <h4 className="text-lg font-semibold text-foreground mb-2">Contacts in this Group</h4>
+                        <h4 className="text-lg font-semibold text-foreground mb-2">
+                          {t("contactsInGroup")}
+                        </h4>
                         <div className="grid gap-4">
                           {contactForm.watch(`groups.${groupIndex}.contacts`)?.map((contactField, contactIndex) => (
                             <ContactForm
@@ -483,7 +523,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                           }}
                           className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
                         >
-                          <Plus className="mr-2 h-4 w-4" /> Add Another Contact to this Group
+                          <Plus className="mr-2 h-4 w-4" /> {t("addAnotherContact")}
                         </Button>
                       </CollapsibleContent>
                     </Collapsible>
@@ -496,7 +536,7 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                   onClick={() => appendGroup(blankGroup())}
                   className="w-full rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-base py-3 mt-4"
                 >
-                  <Plus className="mr-2 h-4 w-4" /> Add Another Group
+                  <Plus className="mr-2 h-4 w-4" /> {t("addAnotherGroup")}
                 </Button>
 
                 <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-4">
@@ -506,14 +546,14 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                     onClick={() => setIsOpen(false)}
                     className="w-full sm:w-auto rounded-lg border-secondary text-secondary-foreground hover:bg-secondary/80 text-base py-3"
                   >
-                    Cancel
+                    {t("cancel")}
                   </Button>
                   <Button
                     type="submit"
                     className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3"
                     disabled={isSaving}
                   >
-                    {isSaving ? "Saving..." : "Save Changes"}
+                    {isSaving ? t("saving") : t("saveChanges")}
                     <Save className="ml-2 h-4 w-4" />
                   </Button>
                 </DialogFooter>

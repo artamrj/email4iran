@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,9 +9,7 @@ import { Plus, ChevronLeft, CheckCircle2, XCircle, ChevronDown } from 'lucide-re
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import {
   Form,
   FormControl,
@@ -19,15 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { showSuccess, showError } from '@/utils/toast';
 import { buildCcEmails, parseEmailList, selectPrimaryEmail } from '@/utils/email';
 import { createTopic, createGroup, createContact, createEmailTemplate, linkEmailTemplateToContact } from '@/services/supabaseService';
@@ -41,74 +31,108 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ContactForm } from './ContactForm';
 import { PasswordPrompt } from './PasswordPrompt'; // New import
 import { languages } from '@/constants/languages';
+import { useTranslation } from '@/lib/i18n';
 
-// --- Step 1: Topic Schema ---
-const topicFormSchema = z.object({
-  slug: z.string().min(1, { message: "Slug is required." }).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-    message: "Slug must be lowercase, alphanumeric, and use hyphens for spaces.",
-  }),
-  name: z.string().min(1, { message: "Topic name is required." }),
-  description: z.string().min(1, { message: "Description is required." }),
-  emoji: z.string().optional(),
-});
+type Translator = ReturnType<typeof useTranslation>["t"];
 
-type TopicFormValues = z.infer<typeof topicFormSchema>;
+const buildTopicFormSchema = (t: Translator) =>
+  z.object({
+    slug: z
+      .string()
+      .min(1, { message: t("validationSlugRequired") })
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+        message: t("validationSlugFormat"),
+      }),
+    name: z.string().min(1, { message: t("validationTopicNameRequired") }),
+    description: z
+      .string()
+      .min(1, { message: t("validationDescriptionRequired") }),
+    emoji: z.string().optional(),
+  });
 
-// --- Step 2: Nested Schemas ---
-const emailTemplateSchema = z.object({
-  templateId: z.string().optional(),
-  emailLanguage: z.string().min(1, { message: "Email template language is required." }),
-  emailSubject: z.string().min(1, { message: "Email subject is required." }),
-  emailBody: z.string().min(1, { message: "Email body is required." }),
-});
+const buildEmailTemplateSchema = (t: Translator) =>
+  z.object({
+    templateId: z.string().optional(),
+    emailLanguage: z
+      .string()
+      .min(1, { message: t("validationEmailTemplateLanguageRequired") }),
+    emailSubject: z
+      .string()
+      .min(1, { message: t("validationEmailSubjectRequired") }),
+    emailBody: z
+      .string()
+      .min(1, { message: t("validationEmailBodyRequired") }),
+  });
 
-const contactSchema = z.object({
-  contactId: z.string().optional(),
-  contactName: z.string().min(1, { message: "Contact name is required." }),
-  // contactOrganization: z.string().optional(), // Removed for simplification
-  // contactLocation: z.string().optional(), // Removed for simplification
-  contactEmoji: z.string().optional(),
-  templateSourceContactIndex: z.number().int().nonnegative().optional(),
-  contactEmail: z.string().min(1, { message: "Email is required." }).refine(
-    (val) => {
-      const emails = parseEmailList(val);
-      if (emails.length === 0) return false; // Must have at least one email
-      return emails.every(email => z.string().email().safeParse(email).success);
-    },
-    { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." }
-  ),
-  contactPrimaryEmail: z.string().optional(),
-  contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
-  emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
-}).superRefine((data, ctx) => {
-  const emails = parseEmailList(data.contactEmail);
-  if (emails.length > 1) {
-    if (!data.contactPrimaryEmail) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Please select a primary email address.",
-        path: ["contactPrimaryEmail"],
-      });
-    } else if (!emails.includes(data.contactPrimaryEmail)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Primary email must be one of the listed addresses.",
-        path: ["contactPrimaryEmail"],
-      });
-    }
-  }
-});
+const buildContactSchema = (t: Translator) => {
+  const emailTemplateSchema = buildEmailTemplateSchema(t);
+  return z
+    .object({
+      contactId: z.string().optional(),
+      contactName: z
+        .string()
+        .min(1, { message: t("validationContactNameRequired") }),
+      // contactOrganization: z.string().optional(), // Removed for simplification
+      // contactLocation: z.string().optional(), // Removed for simplification
+      contactEmoji: z.string().optional(),
+      templateSourceContactIndex: z.number().int().nonnegative().optional(),
+      contactEmail: z
+        .string()
+        .min(1, { message: t("validationEmailRequired") })
+        .refine(
+          (val) => {
+            const emails = parseEmailList(val);
+            if (emails.length === 0) return false; // Must have at least one email
+            return emails.every((email) => z.string().email().safeParse(email).success);
+          },
+          { message: t("validationEmailInvalid") },
+        ),
+      contactPrimaryEmail: z.string().optional(),
+      contactLanguages: z
+        .array(z.string())
+        .min(1, { message: t("validationLanguageRequired") }),
+      emailTemplates: z
+        .array(emailTemplateSchema)
+        .min(1, { message: t("validationEmailTemplateRequired") }),
+    })
+    .superRefine((data, ctx) => {
+      const emails = parseEmailList(data.contactEmail);
+      if (emails.length > 1) {
+        if (!data.contactPrimaryEmail) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t("validationPrimaryEmailRequired"),
+            path: ["contactPrimaryEmail"],
+          });
+        } else if (!emails.includes(data.contactPrimaryEmail)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t("validationPrimaryEmailMustBeListed"),
+            path: ["contactPrimaryEmail"],
+          });
+        }
+      }
+    });
+};
 
-const groupEntrySchema = z.object({
-  groupId: z.string().optional(),
-  groupName: z.string().min(1, { message: "Group name is required." }),
-  // groupDescription: z.string().optional(), // Removed for simplification
-  contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
-});
+const buildGroupEntrySchema = (t: Translator) => {
+  const contactSchema = buildContactSchema(t);
+  return z.object({
+    groupId: z.string().optional(),
+    groupName: z.string().min(1, { message: t("validationGroupNameRequired") }),
+    // groupDescription: z.string().optional(), // Removed for simplification
+    contacts: z
+      .array(contactSchema)
+      .min(1, { message: t("validationContactRequiredPerGroup") }),
+  });
+};
 
-const contactsFormSchema = z.object({
-  groups: z.array(groupEntrySchema).min(1, { message: "At least one group is required." }),
-});
+const buildContactsFormSchema = (t: Translator) => {
+  const groupEntrySchema = buildGroupEntrySchema(t);
+  return z.object({
+    groups: z.array(groupEntrySchema).min(1, { message: t("validationGroupRequired") }),
+  });
+};
 
 interface AddTopicDialogProps {
   triggerLabel?: string;
@@ -120,13 +144,20 @@ interface AddTopicDialogProps {
 }
 
 export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
-  triggerLabel = "Add New Topic",
+  triggerLabel,
   triggerClassName,
   triggerVariant = "ghost",
   triggerSize = "default",
   showTooltip = true,
   skipPassword = false,
 }) => {
+  const { t } = useTranslation();
+  const topicFormSchema = useMemo(() => buildTopicFormSchema(t), [t]);
+  const contactsFormSchema = useMemo(() => buildContactsFormSchema(t), [t]);
+  type TopicFormValues = z.infer<typeof topicFormSchema>;
+  type ContactsFormValues = z.infer<typeof contactsFormSchema>;
+
+  const resolvedTriggerLabel = triggerLabel ?? t("addNewTopic");
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [tempTopicData, setTempTopicData] = useState<TopicFormValues | null>(null);
@@ -158,7 +189,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
     },
   });
 
-  const contactForm = useForm<z.infer<typeof contactsFormSchema>>({
+  const contactForm = useForm<ContactsFormValues>({
     resolver: zodResolver(contactsFormSchema),
     defaultValues: {
       groups: [{
@@ -187,13 +218,13 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
 
   const handleTopicSubmit = async (values: TopicFormValues) => {
     setTempTopicData(values);
-    showSuccess('Topic details saved! Now add contacts.');
+    showSuccess(t("topicDetailsSaved"));
     setStep(2);
   };
 
-  const handleContactsSubmit = async (values: z.infer<typeof contactsFormSchema>) => {
+  const handleContactsSubmit = async (values: ContactsFormValues) => {
     if (!tempTopicData) {
-      showError('Topic details are missing. Please go back to Step 1.');
+      showError(t("topicDetailsMissing"));
       return;
     }
 
@@ -272,7 +303,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
         }
       }
 
-      showSuccess('Topic, groups, contacts, and email templates added successfully!');
+      showSuccess(t("addAllDetailsSuccess"));
       queryClient.invalidateQueries({ queryKey: ['topics'] });
       queryClient.invalidateQueries({ queryKey: ['topics', 'admin'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
@@ -285,7 +316,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
       setTempTopicData(null); // Clear temporary data
     } catch (error) {
       console.error('Error adding all details:', error);
-      showError('Failed to add all details. Please try again.');
+      showError(t("addAllDetailsFailed"));
     }
   };
 
@@ -322,7 +353,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
       disabled={!hasPasswordConfigured} // Disable if password not configured
     >
       <Plus className="h-5 w-5" />
-      <span>{triggerLabel}</span>
+      <span>{resolvedTriggerLabel}</span>
     </Button>
   );
 
@@ -334,7 +365,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
           {!hasPasswordConfigured && (
             <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
               <p>
-                Please set `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` or `NEXT_PUBLIC_ADMIN_PASSWORD` in your .env.local file to enable this feature.
+                {t("adminEnvTooltip")}
               </p>
             </TooltipContent>
           )}
@@ -345,14 +376,18 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
       <DialogContent className="sm:max-w-[700px] rounded-xl p-6 bg-card text-card-foreground overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">
-            {!isPasswordVerified ? 'Enter Password' : (step === 1 ? 'Create New Topic' : 'Add Contact Details')}
+            {!isPasswordVerified
+              ? t("enterPassword")
+              : step === 1
+                ? t("createNewTopicTitle")
+                : t("addContactDetailsTitle")}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {!isPasswordVerified
-              ? 'A password is required to add new topics.'
-              : (step === 1
-                ? 'Fill in the details for your new advocacy topic.'
-                : 'Now, add groups, key contacts, and email templates for this topic.')}
+              ? t("passwordRequiredAddTopics")
+              : step === 1
+                ? t("fillTopicDetails")
+                : t("addGroupsContactsTemplates")}
           </DialogDescription>
         </DialogHeader>
 
@@ -374,9 +409,15 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-foreground">Topic Name</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          {t("topicNameLabel")}
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="Human Rights Advocacy" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                          <Input
+                            placeholder={t("topicNamePlaceholder")}
+                            className="rounded-lg border-border bg-input text-foreground"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -387,9 +428,15 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                     name="slug"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-foreground">Slug (URL-friendly)</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          {t("slugLabel")}
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="human-rights-advocacy" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                          <Input
+                            placeholder={t("slugPlaceholder")}
+                            className="rounded-lg border-border bg-input text-foreground"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -400,9 +447,16 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          {t("descriptionLabel")}
+                        </FormLabel>
                         <FormControl>
-                          <Textarea placeholder="A brief overview of the topic..." rows={4} className="rounded-lg border-border bg-input text-foreground" {...field} />
+                          <Textarea
+                            placeholder={t("descriptionPlaceholder")}
+                            rows={4}
+                            className="rounded-lg border-border bg-input text-foreground"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -413,7 +467,9 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                     name="emoji"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., ✊)</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          {t("emojiLabel")}
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="✊" className="rounded-lg border-border bg-input text-foreground" {...field} />
                         </FormControl>
@@ -423,7 +479,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                   />
                   <DialogFooter className="pt-4">
                     <Button type="submit" className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
-                      Next: Add Contacts <CheckCircle2 className="ml-2 h-4 w-4" />
+                      {t("nextAddContacts")} <CheckCircle2 className="ml-2 h-4 w-4" />
                     </Button>
                   </DialogFooter>
                 </form>
@@ -438,7 +494,12 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2 -mx-2 px-2 rounded-md hover:bg-secondary/20 transition-colors">
                           <h3 className="text-xl font-bold text-foreground">
-                            Group #{groupIndex + 1}: {contactForm.watch(`groups.${groupIndex}.groupName`) || 'New Group'}
+                            {t("groupTitle", {
+                              index: groupIndex + 1,
+                              name:
+                                contactForm.watch(`groups.${groupIndex}.groupName`) ||
+                                t("newGroup"),
+                            })}
                           </h3>
                           <div className="flex items-center gap-2">
                             {groupFields.length > 1 && (
@@ -453,7 +514,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                                 className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8"
                               >
                                 <XCircle className="h-5 w-5" />
-                                <span className="sr-only">Remove Group</span>
+                                <span className="sr-only">{t("removeGroup")}</span>
                               </Button>
                             )}
                             <ChevronDown className="h-5 w-5 transition-transform rotate-0" />
@@ -462,15 +523,23 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                       </CollapsibleTrigger>
                       <CollapsibleContent className="grid gap-4 pt-4">
                         {/* Group Details */}
-                        <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">Group Details</h4>
+                        <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">
+                          {t("groupDetails")}
+                        </h4>
                         <FormField
                           control={contactForm.control}
                           name={`groups.${groupIndex}.groupName`}
                           render={({ field }) => (
                             <FormItem className="mb-2">
-                              <FormLabel className="text-sm font-medium text-foreground">Group Name</FormLabel>
+                              <FormLabel className="text-sm font-medium text-foreground">
+                                {t("groupNameLabel")}
+                              </FormLabel>
                               <FormControl>
-                                <Input placeholder="Government Officials" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                                <Input
+                                  placeholder={t("groupNamePlaceholder")}
+                                  className="rounded-lg border-border bg-input text-foreground"
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -480,7 +549,9 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                         <Separator className="my-6 bg-border rounded-full" />
 
                         {/* Contacts Field Array */}
-                        <h4 className="text-lg font-semibold text-foreground mb-2">Contacts in this Group</h4>
+                        <h4 className="text-lg font-semibold text-foreground mb-2">
+                          {t("contactsInGroup")}
+                        </h4>
                         <div className="grid gap-4">
                           {contactForm.watch(`groups.${groupIndex}.contacts`)?.map((contactField, contactIndex) => (
                             <ContactForm
@@ -538,7 +609,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                           }}
                           className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
                         >
-                          <Plus className="mr-2 h-4 w-4" /> Add Another Contact to this Group
+                          <Plus className="mr-2 h-4 w-4" /> {t("addAnotherContact")}
                         </Button>
                       </CollapsibleContent>
                     </Collapsible>
@@ -568,7 +639,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                     })}
                     className="w-full rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-base py-3 mt-4"
                   >
-                    <Plus className="mr-2 h-4 w-4" /> Add Another Group
+                    <Plus className="mr-2 h-4 w-4" /> {t("addAnotherGroup")}
                   </Button>
 
                   <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-4">
@@ -578,10 +649,10 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                       onClick={() => setStep(1)}
                       className="w-full sm:w-auto rounded-lg border-secondary text-secondary-foreground hover:bg-secondary/80 text-base py-3"
                     >
-                      <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                      <ChevronLeft className="mr-2 h-4 w-4" /> {t("backButton")}
                     </Button>
                     <Button type="submit" className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
-                      Add All Details <CheckCircle2 className="ml-2 h-4 w-4" />
+                      {t("addAllDetails")} <CheckCircle2 className="ml-2 h-4 w-4" />
                     </Button>
                   </DialogFooter>
                 </form>

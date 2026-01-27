@@ -25,6 +25,7 @@ import {
 import { ArrowLeft, Mail, Copy, ExternalLink } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 import { buildCcEmails, parseEmailList, selectPrimaryEmail } from "@/utils/email";
+import { useTranslation } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,8 @@ interface Personalization {
   city: string;
   country: string;
 }
+
+type Translator = ReturnType<typeof useTranslation>["t"];
 
 const replacePlaceholders = (
   text: string,
@@ -116,13 +119,14 @@ const getEmailBody = (
   templates: EmailTemplate[],
   personalization: Personalization,
   contactLanguages: string[],
+  t: Translator,
 ) => {
   const template = selectTemplateForContact(templates, contactLanguages);
 
   if (!template) {
     return {
-      subject: "No template available",
-      body: "No email template found for this contact.",
+      subject: t("noTemplateAvailableTitle"),
+      body: t("noTemplateAvailableBody"),
     };
   }
 
@@ -167,6 +171,7 @@ const ContactCard: React.FC<{
   contact: Contact;
   personalization: Personalization;
 }> = ({ contact, personalization }) => {
+  const { t } = useTranslation();
   const { data: templates, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ["emailTemplates", contact.id],
     queryFn: () => getEmailTemplatesByContactId(contact.id),
@@ -174,8 +179,8 @@ const ContactCard: React.FC<{
 
   const { subject, body } = useMemo(() => {
     if (!templates) return { subject: "", body: "" };
-    return getEmailBody(templates, personalization, contact.languages);
-  }, [templates, personalization, contact.languages]);
+    return getEmailBody(templates, personalization, contact.languages, t);
+  }, [templates, personalization, contact.languages, t]);
 
   const selectedTemplate = useMemo(() => {
     if (!templates) return undefined;
@@ -212,11 +217,11 @@ const ContactCard: React.FC<{
 
   const handleSendRecommendedEmail = () => {
     if (!subject || !body) {
-      showError("No email template available.");
+      showError(t("noEmailTemplateAvailable"));
       return;
     }
     if (!primaryEmail) {
-      showError("No primary email address available.");
+      showError(t("noPrimaryEmailAvailable"));
       return;
     }
     const mailtoLink = buildMailtoLink(primaryEmail, ccEmails, subject, body);
@@ -225,14 +230,14 @@ const ContactCard: React.FC<{
 
   const handleCopyEmail = (contentSubject: string, contentBody: string) => {
     if (!contentSubject || !contentBody) {
-      showError("No email content available to copy.");
+      showError(t("noEmailContentToCopy"));
       return;
     }
-    const emailContent = `Subject: ${contentSubject}\n\n${contentBody}`;
+    const emailContent = `${t("subjectLabel")}: ${contentSubject}\n\n${contentBody}`;
     navigator.clipboard
       .writeText(emailContent)
-      .then(() => showSuccess("Email content copied to clipboard!"))
-      .catch(() => showError("Failed to copy email content."));
+      .then(() => showSuccess(t("emailCopied")))
+      .catch(() => showError(t("failedCopyEmailContent")));
   };
 
   if (isLoadingTemplates) {
@@ -272,15 +277,15 @@ const ContactCard: React.FC<{
       <CardContent className="p-0 flex-grow flex flex-col gap-3 pt-2">
         <div className="space-y-1">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Email
+            {t("emailLabel")}
           </p>
           <div className="text-sm text-foreground break-all">
-            {primaryEmail || "No email available"}
+            {primaryEmail || t("noEmailAvailable")}
           </div>
           {ccEmails.length > 0 && (
             <div className="flex flex-wrap items-center gap-1 pt-1">
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">
-                CC
+                {t("ccLabel")}
               </span>
               {ccEmails.map((email) => (
                 <span
@@ -295,7 +300,7 @@ const ContactCard: React.FC<{
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <span className="text-[11px] uppercase tracking-wide text-muted-foreground mr-1">
-            Languages
+            {t("languagesLabel")}
           </span>
           {contact.languages.map((lang) => (
             <span
@@ -313,7 +318,7 @@ const ContactCard: React.FC<{
           className="w-full min-w-0 flex-1 rounded-lg bg-primary text-primary-foreground text-sm py-2 px-3 hover:bg-primary/90"
           disabled={!subject || !body || isMissingRequiredField}
         >
-          <Mail className="mr-2 h-4 w-4" /> Send Email
+          <Mail className="mr-2 h-4 w-4" /> {t("sendEmail")}
         </Button>
         <Dialog
           onOpenChange={(open) => {
@@ -328,16 +333,16 @@ const ContactCard: React.FC<{
               variant="outline"
               className="w-full min-w-0 flex-1 rounded-lg border-accent text-accent text-sm py-2 px-3 hover:bg-accent/10 dark:hover:bg-accent/20"
             >
-              <ExternalLink className="mr-2 h-4 w-4" /> Customize
+              <ExternalLink className="mr-2 h-4 w-4" /> {t("customize")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px] rounded-xl p-6 bg-card text-card-foreground">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-foreground">
-                Customize Email
+                {t("customizeEmail")}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Edit the subject and body before sending.
+                {t("customizeEmailDescription")}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -346,13 +351,13 @@ const ContactCard: React.FC<{
                   htmlFor="subject"
                   className="text-sm font-medium text-foreground"
                 >
-                  Subject
+                  {t("subjectLabel")}
                 </Label>
                 <Input
                   id="subject"
                   value={customSubject}
                   onChange={(e) => setCustomSubject(e.target.value)}
-                  placeholder="Regarding the recent events in {{city}}"
+                  placeholder={t("customizeSubjectPlaceholder")}
                   className="rounded-lg border-border bg-input text-foreground"
                 />
               </div>
@@ -361,14 +366,14 @@ const ContactCard: React.FC<{
                   htmlFor="body"
                   className="text-sm font-medium text-foreground"
                 >
-                  Body
+                  {t("bodyLabel")}
                 </Label>
                 <Textarea
                   id="body"
                   value={customBody}
                   onChange={(e) => setCustomBody(e.target.value)}
                   rows={10}
-                  placeholder="Dear {{name}}, I am writing to express my concern..."
+                  placeholder={t("customizeBodyPlaceholder")}
                   className="rounded-lg border-border bg-input text-foreground"
                 />
               </div>
@@ -378,7 +383,7 @@ const ContactCard: React.FC<{
                 type="button"
                 onClick={() => {
                   if (!primaryEmail) {
-                    showError("No primary email address available.");
+                    showError(t("noPrimaryEmailAvailable"));
                     return;
                   }
                   const mailtoLink = buildMailtoLink(primaryEmail, ccEmails, customSubject, customBody);
@@ -387,7 +392,7 @@ const ContactCard: React.FC<{
                 className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"
                 disabled={!customSubject || !customBody || isMissingRequiredField}
               >
-                <Mail className="mr-2 h-4 w-4" /> Open Email App
+                <Mail className="mr-2 h-4 w-4" /> {t("openEmailApp")}
               </Button>
               <Button
                 type="button"
@@ -396,7 +401,7 @@ const ContactCard: React.FC<{
                 className="w-full sm:w-auto rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-sm py-2 px-3"
                 disabled={!customSubject || !customBody || isMissingRequiredField}
               >
-                <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
+                <Copy className="mr-2 h-4 w-4" /> {t("copyToClipboard")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -407,13 +412,15 @@ const ContactCard: React.FC<{
 };
 
 const NotFoundState = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
+        <p className="text-xl text-gray-600 mb-4">{t("notFoundTitle")}</p>
         <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
+          {t("returnHome")}
         </a>
       </div>
     </div>
@@ -421,6 +428,7 @@ const NotFoundState = () => {
 };
 
 const TopicDetail = () => {
+  const { t } = useTranslation();
   const params = useParams<{ topicSlug?: string }>();
   const router = useRouter();
   const topicSlugParam = params?.topicSlug;
@@ -545,7 +553,7 @@ const TopicDetail = () => {
             onClick={handleBackNavigation}
             className="mb-6 rounded-lg text-muted-foreground hover:bg-secondary"
           >
-            <ArrowLeft className="mr-2 h-5 w-5" /> Back
+            <ArrowLeft className="mr-2 h-5 w-5" /> {t("back")}
           </Button>
           <Skeleton className="h-12 w-3/4 mb-2 rounded-lg" />
           <Skeleton className="h-6 w-1/2 mb-4 rounded-lg" />
@@ -586,7 +594,7 @@ const TopicDetail = () => {
             onClick={handleBackNavigation}
             className="rounded-lg text-muted-foreground hover:bg-secondary"
           >
-            <ArrowLeft className="mr-2 h-5 w-5" /> Back to Topics
+            <ArrowLeft className="mr-2 h-5 w-5" /> {t("backToTopics")}
           </Button>
         </div>
 
@@ -621,11 +629,10 @@ const TopicDetail = () => {
             <Card className="lg:col-span-1 rounded-xl shadow-lg border-none bg-card p-6">
               <CardHeader className="p-0 pb-4">
                 <CardTitle className="text-2xl font-bold text-foreground">
-                  Personalize Your Message
+                  {t("personalizeYourMessage")}
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Enter your details to automatically customize email templates for
-                  contacts.
+                  {t("personalizeDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0 grid gap-4">
@@ -635,7 +642,7 @@ const TopicDetail = () => {
                       htmlFor="name"
                       className="text-sm font-medium text-foreground"
                     >
-                      Your Name (Required)
+                      {t("yourNameRequired")}
                     </Label>
                     <Input
                       id="name"
@@ -657,7 +664,7 @@ const TopicDetail = () => {
                       htmlFor="city"
                       className="text-sm font-medium text-foreground"
                     >
-                      Your City (Required)
+                      {t("yourCityRequired")}
                     </Label>
                     <Input
                       id="city"
@@ -679,7 +686,7 @@ const TopicDetail = () => {
                       htmlFor="country"
                       className="text-sm font-medium text-foreground"
                     >
-                      Your Country (Required)
+                      {t("yourCountryRequired")}
                     </Label>
                     <Input
                       id="country"
@@ -697,8 +704,8 @@ const TopicDetail = () => {
                 )}
                 <p className="text-xs text-muted-foreground mt-2">
                   {isLoadingPersonalization
-                    ? "Checking required personalization fields..."
-                    : "Your personalization details are used to customize email templates and are not stored."}
+                    ? t("personalizationChecking")
+                    : t("personalizationNote")}
                 </p>
               </CardContent>
             </Card>
@@ -706,7 +713,9 @@ const TopicDetail = () => {
         </div>
 
         <div className="mt-12">
-          <h2 className="text-3xl font-bold text-foreground mb-6">Key Contacts</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-6">
+            {t("keyContacts")}
+          </h2>
           {groups?.map((group) => (
             <div key={group.id} className="mb-10">
               <h3 className="text-2xl font-semibold text-primary mb-4">

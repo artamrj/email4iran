@@ -11,6 +11,7 @@ import { EditTopicDialog } from "@/components/EditTopicDialog";
 import { PasswordPrompt } from "@/components/PasswordPrompt";
 import { showError, showSuccess } from "@/utils/toast";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const TopicControlPanel: React.FC = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [accessLevel, setAccessLevel] = useState<"none" | "add" | "admin">("none");
   const queryClient = useQueryClient();
@@ -53,27 +55,30 @@ export const TopicControlPanel: React.FC = () => {
     mutationFn: ({ topicId, isActive }: { topicId: string; isActive: boolean }) =>
       updateTopicActive(topicId, isActive),
     onSuccess: (updatedTopic) => {
-      const nextState = updatedTopic.is_active ? "activated" : "deactivated";
-      showSuccess(`Topic ${nextState}.`);
+      if (updatedTopic.is_active) {
+        showSuccess(t("topicActivated"));
+      } else {
+        showSuccess(t("topicDeactivated"));
+      }
       queryClient.invalidateQueries({ queryKey: ["topics"] });
       queryClient.invalidateQueries({ queryKey: ["topics", "admin"] });
     },
     onError: (error) => {
       console.error("Failed to update topic status:", error);
-      showError("Failed to update topic status. Please try again.");
+      showError(t("failedUpdateTopicStatus"));
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (topicId: string) => deleteTopic(topicId),
     onSuccess: () => {
-      showSuccess("Topic deleted.");
+      showSuccess(t("topicDeleted"));
       queryClient.invalidateQueries({ queryKey: ["topics"] });
       queryClient.invalidateQueries({ queryKey: ["topics", "admin"] });
     },
     onError: (error) => {
       console.error("Failed to delete topic:", error);
-      showError("Failed to delete topic. Please try again.");
+      showError(t("failedDeleteTopic"));
     },
   });
 
@@ -99,7 +104,7 @@ export const TopicControlPanel: React.FC = () => {
   const handleDelete = (topic: Topic) => {
     if (!isAdmin) return;
     const confirmed = window.confirm(
-      `Delete "${topic.name}"? This cannot be undone.`,
+      t("deleteConfirm", { topicName: topic.name }),
     );
     if (!confirmed) return;
     deleteMutation.mutate(topic.id);
@@ -116,14 +121,13 @@ export const TopicControlPanel: React.FC = () => {
             disabled={!hasPasswordConfigured}
           >
             <Settings className="h-5 w-5" />
-            <span>Control Panel</span>
+            <span>{t("controlPanel")}</span>
           </Button>
         </TooltipTrigger>
         {!hasPasswordConfigured && (
           <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
             <p>
-              Please set `NEXT_PUBLIC_ADMIN_PASSWORD` or `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` in your
-              .env.local file to enable this feature.
+              {t("adminEnvTooltip")}
             </p>
           </TooltipContent>
         )}
@@ -132,17 +136,17 @@ export const TopicControlPanel: React.FC = () => {
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">
             {!isPasswordVerified
-              ? "Enter Password"
+              ? t("enterPassword")
               : isAdmin
-                ? "Topic Control Panel"
-                : "Add Topics"}
+                ? t("topicControlPanel")
+                : t("addTopics")}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {!isPasswordVerified
-              ? "A password is required to manage topics."
+              ? t("passwordRequiredManage")
               : isAdmin
-                ? "Add new topics or activate/deactivate existing ones."
-                : "Add new topics. Editing existing topics requires the admin password."}
+                ? t("addTopicsOrActivate")
+                : t("addTopicsAdminRequired")}
           </DialogDescription>
         </DialogHeader>
 
@@ -163,16 +167,16 @@ export const TopicControlPanel: React.FC = () => {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">
-                  {isAdmin ? "Manage Topics" : "Manage Visibility"}
+                  {isAdmin ? t("manageTopics") : t("manageVisibility")}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {isAdmin
-                    ? "New topics are active by default. Toggle a switch to deactivate old topics."
-                    : "Toggle topics active/inactive. Editing groups and emails requires the admin password."}
+                    ? t("newTopicsActiveByDefault")
+                    : t("toggleTopicsActiveInactive")}
                 </p>
               </div>
               <AddTopicDialog
-                triggerLabel="Add Topic"
+                triggerLabel={t("addTopic")}
                 triggerVariant="default"
                 triggerSize="sm"
                 triggerClassName="rounded-lg px-4 py-2"
@@ -195,11 +199,11 @@ export const TopicControlPanel: React.FC = () => {
                 </div>
               ) : isError ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-                  Failed to load topics. Please check your Supabase connection and schema.
+                  {t("failedLoadTopics")}
                 </div>
               ) : topicsList.length === 0 ? (
                 <div className="rounded-lg border border-border bg-secondary/10 p-4 text-sm text-muted-foreground">
-                  No topics found yet. Add your first topic to get started.
+                  {t("noTopicsFound")}
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -235,7 +239,7 @@ export const TopicControlPanel: React.FC = () => {
                                 disabled={isDeletingTopic(topic.id)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                {t("deleteAction")}
                               </Button>
                             </>
                           )}
@@ -245,7 +249,7 @@ export const TopicControlPanel: React.FC = () => {
                               isActive ? "text-emerald-600" : "text-muted-foreground",
                             )}
                           >
-                            {isActive ? "Active" : "Inactive"}
+                            {isActive ? t("activeStatus") : t("inactiveStatus")}
                           </span>
                           <Switch
                             checked={isActive}

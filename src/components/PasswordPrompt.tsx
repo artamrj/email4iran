@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,10 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { showSuccess, showError } from '@/utils/toast';
-
-const passwordSchema = z.object({
-  password: z.string().min(1, { message: "Password is required." }),
-});
+import { useTranslation } from '@/lib/i18n';
 
 interface PasswordPromptProps {
   onSuccess: () => void;
@@ -32,31 +29,41 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({
   passwordMatches,
   onSuccessWithMatch,
 }) => {
-  const form = useForm<z.infer<typeof passwordSchema>>({
+  const { t } = useTranslation();
+  const passwordSchema = useMemo(
+    () =>
+      z.object({
+        password: z.string().min(1, { message: t("passwordRequired") }),
+      }),
+    [t],
+  );
+  type PasswordValues = z.infer<typeof passwordSchema>;
+
+  const form = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
       password: '',
     },
   });
 
-  const onSubmit = (values: z.infer<typeof passwordSchema>) => {
+  const onSubmit = (values: PasswordValues) => {
     // NEXT_PUBLIC_ADD_TOPIC_PASSWORD should be set as a build-time environment variable
     // in your hosting platform or locally when running `next dev`.
     if (passwordMatches && passwordMatches.length > 0) {
       const matchEntry = passwordMatches.find((entry) => entry.password === values.password);
       if (matchEntry) {
-        showSuccess("Password verified!");
+        showSuccess(t("passwordVerified"));
         onSuccess();
         onSuccessWithMatch?.(matchEntry.match);
         return;
       }
-      showError("Incorrect password.");
-      form.setError("password", { message: "Incorrect password." });
+      showError(t("incorrectPassword"));
+      form.setError("password", { message: t("incorrectPassword") });
       return;
     }
 
     if (passwordMatches && passwordMatches.length === 0) {
-      showError(`Password not configured. Please set ${passwordEnvKey} as a build-time environment variable.`);
+      showError(t("passwordNotConfigured", { envKey: passwordEnvKey }));
       return;
     }
 
@@ -70,16 +77,16 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({
       (expectedPassword ? [expectedPassword] : fallbackPasswords);
 
     if (resolvedPasswords.length === 0) {
-      showError(`Password not configured. Please set ${passwordEnvKey} as a build-time environment variable.`);
+      showError(t("passwordNotConfigured", { envKey: passwordEnvKey }));
       return;
     }
 
     if (resolvedPasswords.includes(values.password)) {
-      showSuccess("Password verified!");
+      showSuccess(t("passwordVerified"));
       onSuccess();
     } else {
-      showError("Incorrect password.");
-      form.setError("password", { message: "Incorrect password." });
+      showError(t("incorrectPassword"));
+      form.setError("password", { message: t("incorrectPassword") });
     }
   };
 
@@ -91,9 +98,16 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
+              <FormLabel className="text-sm font-medium text-foreground">
+                {t("passwordLabel")}
+              </FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Enter password" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                <Input
+                  type="password"
+                  placeholder={t("passwordPlaceholder")}
+                  className="rounded-lg border-border bg-input text-foreground"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -101,10 +115,10 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel} className="rounded-lg border-secondary text-secondary-foreground hover:bg-secondary/80">
-            Cancel
+            {t("cancel")}
           </Button>
           <Button type="submit" className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground">
-            Verify
+            {t("verify")}
           </Button>
         </div>
       </form>

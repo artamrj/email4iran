@@ -16,8 +16,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Topic } from "@/types/supabase";
 import { TopicControlPanel } from "@/components/TopicControlPanel";
+import { useTranslation } from "@/lib/i18n";
 
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
+  const { t } = useTranslation();
+
   return (
     <Link href={`/${topic.slug}`} className="block h-full">
       <Card className="h-full flex flex-col justify-between rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out border border-border bg-card text-card-foreground">
@@ -46,7 +49,7 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
             type="button"
             className="inline-flex items-center justify-center rounded-full bg-destructive px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-destructive-foreground transition duration-200 ease-out hover:bg-destructive/90 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
           >
-            Get Started
+            {t("getStarted")}
           </button>
         </CardFooter>
       </Card>
@@ -56,6 +59,7 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
 
 const Index = () => {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const { t, locale } = useTranslation();
   const { data: topics, isLoading, isError } = useQuery<Topic[]>({
     queryKey: ["topics"],
     queryFn: getTopics,
@@ -74,11 +78,10 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center p-8 bg-card rounded-lg shadow-2xl border border-destructive/20">
           <h1 className="text-4xl font-bold text-destructive mb-4">
-            Error Loading Topics
+            {t("errorLoadingTopics")}
           </h1>
           <p className="text-lg text-foreground">
-            Could not fetch advocacy topics. Please check your Supabase connection
-            and environment variables.
+            {t("errorLoadingTopicsBody")}
           </p>
         </div>
       </div>
@@ -97,7 +100,7 @@ const Index = () => {
               <div className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.12)]">
                 <Image
                   src="/lionandsun.png"
-                  alt="Lion and Sun emblem"
+                  alt={t("lionSunAlt")}
                   width={120}
                   height={120}
                   priority
@@ -108,13 +111,14 @@ const Index = () => {
             <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
               irani.email
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-6xl">
-              Send the emails that move #FreeIran forward
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-              Discover verified domains and key contacts, send faster with ready templates,
-              and turn small wins into unstoppable momentum for #IranRevolution2026.
-            </p>
+            <div dir={locale === "fa" ? "rtl" : "ltr"}>
+              <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-6xl">
+                {t("heroTitle")}
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
+                {t("heroSubtitle")}
+              </p>
+            </div>
           </div>
         </div>
         <div className="flex justify-center mb-8">
@@ -125,7 +129,9 @@ const Index = () => {
             }
             className="inline-flex items-center justify-center rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-secondary"
           >
-            {sortOrder === "newest" ? "Oldest → Newest" : "Newest → Oldest"}
+            {sortOrder === "newest"
+              ? t("sortOldestToNewest")
+              : t("sortNewestToOldest")}
           </button>
         </div>
 
@@ -155,7 +161,7 @@ const Index = () => {
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-12">
-            No active topics yet. Check back soon.
+            {t("noActiveTopics")}
           </div>
         )}
       </div>
