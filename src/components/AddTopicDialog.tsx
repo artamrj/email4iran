@@ -244,11 +244,11 @@ export const AddTopicDialog: React.FC = () => {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed top-4 left-4 z-50 rounded-full w-12 h-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 ease-in-out flex items-center justify-center"
-        size="icon"
+        variant="ghost" // Change to ghost variant
+        className="fixed top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2" // Adjusted styling
       >
-        <Plus className="h-6 w-6" />
-        <span className="sr-only">Add New Topic</span>
+        <Plus className="h-5 w-5" /> {/* Slightly smaller icon for text button */}
+        <span>Add New Topic</span> {/* Add text */}
       </Button>
       <DialogContent className="sm:max-w-[700px] rounded-xl p-6 bg-card text-card-foreground overflow-y-auto max-h-[90vh]">
         <DialogHeader>
