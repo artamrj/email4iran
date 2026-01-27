@@ -428,6 +428,19 @@ const TopicDetail = () => {
     ? topicSlugParam[0]
     : topicSlugParam;
 
+  const handleBackNavigation = () => {
+    if (typeof window !== "undefined") {
+      const sameOriginReferrer =
+        document.referrer &&
+        document.referrer.startsWith(window.location.origin);
+      if (sameOriginReferrer) {
+        router.back();
+        return;
+      }
+    }
+    router.push("/");
+  };
+
   const [personalization, setPersonalization] = useState<Personalization>({
     name: "",
     city: "",
@@ -529,7 +542,7 @@ const TopicDetail = () => {
         <div className="container mx-auto max-w-6xl py-8">
           <Button
             variant="ghost"
-            onClick={() => router.back()}
+            onClick={handleBackNavigation}
             className="mb-6 rounded-lg text-muted-foreground hover:bg-secondary"
           >
             <ArrowLeft className="mr-2 h-5 w-5" /> Back
@@ -570,7 +583,7 @@ const TopicDetail = () => {
         <div className="flex items-center justify-between mb-8">
           <Button
             variant="ghost"
-            onClick={() => router.back()}
+            onClick={handleBackNavigation}
             className="rounded-lg text-muted-foreground hover:bg-secondary"
           >
             <ArrowLeft className="mr-2 h-5 w-5" /> Back to Topics
