@@ -9,7 +9,7 @@
     "build:cf": "next build && next-on-pages",
     "start": "next start",
     "lint": "eslint .",
-    "deploy:cf": "pnpm dlx wrangler pages deploy .vercel/output/static"
+    "deploy:cf": "wrangler pages deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
