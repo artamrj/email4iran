@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Mail, Copy, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Mail, Copy, ExternalLink, Users, MessageSquareText } from 'lucide-react'; // Added new icons
 import { showSuccess, showError } from '@/utils/toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -306,6 +306,10 @@ const TopicDetail = () => {
   document.title = topic.name;
   document.querySelector('meta[name="description"]')?.setAttribute('content', topic.description);
 
+  const allGroups = groups || [];
+  const hasGroups = allGroups.length > 0;
+  const hasContacts = allGroups.some(group => (contactsByGroup?.[group.id]?.length || 0) > 0);
+
   return (
     <div className="min-h-screen flex flex-col bg-background p-4 sm:p-8">
       <div className="container mx-auto max-w-6xl py-8">
@@ -381,20 +385,46 @@ const TopicDetail = () => {
         {/* Groups & Contacts */}
         <div className="mt-12">
           <h2 className="text-3xl font-bold text-foreground mb-6">Key Contacts</h2>
-          {groups?.map((group) => (
-            <div key={group.id} className="mb-10">
-              <h3 className="text-2xl font-semibold text-primary mb-4">
-                {group.name}
-              </h3>
-              <p className="text-foreground mb-6">{group.description}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {contactsByGroup?.[group.id]?.map((contact) => (
-                  <ContactCard key={contact.id} contact={contact} personalization={personalization} />
-                ))}
-              </div>
-              <Separator className="my-8 bg-border rounded-full" />
+
+          {!hasGroups ? (
+            <div className="flex flex-col items-center justify-center p-8 bg-card rounded-xl shadow-md border border-border text-center">
+              <Users className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-xl font-semibold text-foreground mb-2">No Contact Groups Found</p>
+              <p className="text-muted-foreground max-w-md">
+                It looks like there are no contact groups set up for this topic yet.
+                You can add new topics and their contacts from the "Add New Topic" button on the home page.
+              </p>
             </div>
-          ))}
+          ) : (
+            allGroups.map((group) => (
+              <div key={group.id} className="mb-10 p-6 bg-card rounded-xl shadow-md border border-border">
+                <div className="flex items-center gap-3 mb-4">
+                  <Users className="h-7 w-7 text-primary" />
+                  <h3 className="text-2xl font-semibold text-primary">
+                    {group.name}
+                  </h3>
+                </div>
+                {group.description && <p className="text-foreground mb-6">{group.description}</p>}
+                
+                {!contactsByGroup?.[group.id]?.length ? (
+                  <div className="flex flex-col items-center justify-center p-6 bg-secondary/20 rounded-lg border border-dashed border-border text-center">
+                    <MessageSquareText className="h-12 w-12 text-muted-foreground mb-3" />
+                    <p className="text-lg font-medium text-foreground mb-1">No Contacts in this Group</p>
+                    <p className="text-muted-foreground text-sm max-w-sm">
+                      There are no individual contacts listed under this group yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {contactsByGroup[group.id].map((contact) => (
+                      <ContactCard key={contact.id} contact={contact} personalization={personalization} />
+                    ))}
+                  </div>
+                )}
+                <Separator className="my-8 bg-border rounded-full" />
+              </div>
+            ))
+          )}
         </div>
       </div>
 
