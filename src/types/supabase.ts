@@ -1,40 +1,33 @@
 export interface Topic {
   id: string;
   slug: string;
-  title: string;
-  shortDescription: string;
-  longDescription: string;
-  primaryRegion: string;
-  tags: string[];
-  defaultLanguage: string;
-  lastUpdated: string; // timestamp
-  metaPageTitle: string;
-  metaPageDescription: string;
+  name: string; // Changed from title
+  description: string; // Changed from shortDescription and longDescription
+  default_language: string; // Changed from defaultLanguage
 }
 
-export interface Category {
+export interface Group { // Renamed from Category
   id: string;
-  topicId: string;
-  slug: string;
+  topic_id: string; // Changed from topicId
   name: string;
   description: string;
 }
 
 export interface Contact {
   id: string;
-  categoryId: string;
+  group_id: string; // Changed from categoryId
   name: string;
-  country: string;
-  flag: string; // emoji or URL
-  title: string;
+  organization: string | null; // New field
+  location: string | null; // New field
+  emoji: string; // Changed from flag
   email: string;
   languages: string[];
 }
 
 export interface EmailTemplate {
   id: string;
-  contactId: string;
-  language: string; // "en" or "local"
+  contact_id: string; // Changed from contactId
+  language: string;
   subject: string;
   body: string;
 }

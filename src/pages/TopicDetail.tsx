@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTopicBySlug,
-  getCategoriesByTopicId,
-  getContactsByCategoryId,
+  getGroupsByTopicId, // Changed function name
+  getContactsByGroupId, // Changed function name
   getEmailTemplatesByContactId,
 } from '@/services/supabaseService';
-import { Topic, Category, Contact, EmailTemplate } from '@/types/supabase';
+import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase'; // Updated import for Group
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MadeWithDyad } from "@/components/made-with-dyad"; // Added import
+import { MadeWithDyad } from "@/components/made-with-dyad";
 
 interface Personalization {
   name: string;
@@ -119,13 +119,14 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
     <Card className="rounded-xl shadow-md border-none bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 p-4 flex flex-col justify-between h-full">
       <CardHeader className="p-0 pb-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-2xl">{contact.flag}</span>
+          <span className="text-2xl">{contact.emoji}</span> {/* Changed from contact.flag */}
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
             {contact.name}
           </CardTitle>
         </div>
         <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-          {contact.title} ({contact.country})
+          {contact.organization && `${contact.organization}, `} {/* New field */}
+          {contact.location && `${contact.location}`} {/* New field */}
         </CardDescription>
         <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
           {contact.email}
@@ -224,23 +225,23 @@ const TopicDetail = () => {
     enabled: !!topicSlug,
   });
 
-  const { data: categories, isLoading: isLoadingCategories } = useQuery<Category[]>({
-    queryKey: ['categories', topic?.id],
-    queryFn: () => getCategoriesByTopicId(topic!.id),
+  const { data: groups, isLoading: isLoadingGroups } = useQuery<Group[]>({ // Changed to groups
+    queryKey: ['groups', topic?.id], // Changed key
+    queryFn: () => getGroupsByTopicId(topic!.id), // Changed function name
     enabled: !!topic?.id,
   });
 
-  const { data: contactsByCategory, isLoading: isLoadingContacts } = useQuery<Record<string, Contact[]>>({
-    queryKey: ['contactsByCategories', categories?.map(c => c.id)],
+  const { data: contactsByGroup, isLoading: isLoadingContacts } = useQuery<Record<string, Contact[]>>({ // Changed to contactsByGroup
+    queryKey: ['contactsByGroups', groups?.map(c => c.id)], // Changed key
     queryFn: async () => {
-      if (!categories) return {};
+      if (!groups) return {};
       const contactsMap: Record<string, Contact[]> = {};
-      for (const category of categories) {
-        contactsMap[category.id] = await getContactsByCategoryId(category.id);
+      for (const group of groups) { // Changed to group
+        contactsMap[group.id] = await getContactsByGroupId(group.id); // Changed function name
       }
       return contactsMap;
     },
-    enabled: !!categories,
+    enabled: !!groups,
   });
 
   useEffect(() => {
@@ -250,14 +251,14 @@ const TopicDetail = () => {
   }, [topic, isLoadingTopic, isErrorTopic, navigate]);
 
   const handleCopyAllEmails = async () => {
-    if (!contactsByCategory || Object.keys(contactsByCategory).length === 0) {
+    if (!contactsByGroup || Object.keys(contactsByGroup).length === 0) { // Changed to contactsByGroup
       showError('No contacts available to copy emails from.');
       return;
     }
 
     const allEmails = new Set<string>();
-    for (const categoryId in contactsByCategory) {
-      contactsByCategory[categoryId].forEach(contact => {
+    for (const groupId in contactsByGroup) { // Changed to groupId
+      contactsByGroup[groupId].forEach(contact => { // Changed to contactsByGroup
         allEmails.add(contact.email);
       });
     }
@@ -273,7 +274,7 @@ const TopicDetail = () => {
       .catch(() => showError('Failed to copy emails.'));
   };
 
-  if (isLoadingTopic || isLoadingCategories || isLoadingContacts) {
+  if (isLoadingTopic || isLoadingGroups || isLoadingContacts) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-950 dark:to-gray-900 p-4 sm:p-8">
         <div className="container mx-auto max-w-6xl py-8">
@@ -310,9 +311,9 @@ const TopicDetail = () => {
     return null; // Should be handled by redirect to 404
   }
 
-  // Set SEO metadata
-  document.title = topic.metaPageTitle || topic.title;
-  document.querySelector('meta[name="description"]')?.setAttribute('content', topic.metaPageDescription || topic.shortDescription);
+  // Set SEO metadata (using topic.name and topic.description)
+  document.title = topic.name; // Changed from metaPageTitle
+  document.querySelector('meta[name="description"]')?.setAttribute('content', topic.description); // Changed from metaPageDescription
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-950 dark:to-gray-900 p-4 sm:p-8">
@@ -325,14 +326,12 @@ const TopicDetail = () => {
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 leading-tight">
-          {topic.title}
+          {topic.name} {/* Changed from topic.title */}
         </h1>
         <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-4">
-          {topic.shortDescription}
+          {topic.description} {/* Changed from topic.shortDescription */}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-          Last updated: {format(new Date(topic.lastUpdated), 'PPP')}
-        </p>
+        {/* Removed lastUpdated as it's no longer in schema */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Topic Context Block */}
@@ -341,7 +340,7 @@ const TopicDetail = () => {
               <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Context</CardTitle>
             </CardHeader>
             <CardContent className="p-0 prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
-              <MarkdownRenderer content={topic.longDescription} />
+              <MarkdownRenderer content={topic.description} /> {/* Changed from topic.longDescription */}
             </CardContent>
           </Card>
 
@@ -403,17 +402,17 @@ const TopicDetail = () => {
           </Card>
         </div>
 
-        {/* Categories & Contacts */}
+        {/* Groups & Contacts */}
         <div className="mt-12">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Contacts</h2>
-          {categories?.map((category) => (
-            <div key={category.id} className="mb-10">
+          {groups?.map((group) => ( // Changed to groups and group
+            <div key={group.id} className="mb-10">
               <h3 className="text-2xl font-semibold text-purple-800 dark:text-purple-300 mb-4">
-                {category.name}
+                {group.name} {/* Changed from category.name */}
               </h3>
-              <p className="text-gray-700 dark:text-gray-300 mb-6">{category.description}</p>
+              <p className="text-gray-700 dark:text-gray-300 mb-6">{group.description}</p> {/* Changed from category.description */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {contactsByCategory?.[category.id]?.map((contact) => (
+                {contactsByGroup?.[group.id]?.map((contact) => ( // Changed to contactsByGroup and group.id
                   <ContactCard key={contact.id} contact={contact} personalization={personalization} />
                 ))}
               </div>

@@ -6,30 +6,27 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Topic } from '@/types/supabase'; // Import Topic type
 
-const TopicCard: React.FC<{ topic: any }> = ({ topic }) => {
+const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => { // Use Topic type
   return (
     <Link to={`/${topic.slug}`} className="block h-full">
       <Card className="h-full flex flex-col justify-between rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out border-none bg-gradient-to-br from-purple-500/10 to-blue-500/10 dark:from-purple-900/20 dark:to-blue-900/20">
         <CardHeader className="pb-2">
           <CardTitle className="text-2xl font-extrabold text-purple-800 dark:text-purple-300 leading-tight">
-            {topic.title}
+            {topic.name} {/* Changed from topic.title */}
           </CardTitle>
           <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {topic.primaryRegion}
+            {/* Removed topic.primaryRegion as it's no longer in schema */}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
           <p className="text-base text-gray-700 dark:text-gray-300 mb-4 line-clamp-3">
-            {topic.shortDescription}
+            {topic.description} {/* Changed from topic.shortDescription */}
           </p>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2 pt-0">
-          {topic.tags.map((tag: string) => (
-            <Badge key={tag} variant="secondary" className="rounded-full px-3 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-              {tag}
-            </Badge>
-          ))}
+          {/* Removed tags as it's no longer in schema */}
         </CardFooter>
       </Card>
     </Link>
@@ -37,7 +34,7 @@ const TopicCard: React.FC<{ topic: any }> = ({ topic }) => {
 };
 
 const Index = () => {
-  const { data: topics, isLoading, isError } = useQuery({
+  const { data: topics, isLoading, isError } = useQuery<Topic[]>({ // Specify Topic[] type
     queryKey: ['topics'],
     queryFn: getTopics,
   });
