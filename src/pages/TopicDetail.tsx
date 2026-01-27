@@ -157,7 +157,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
               <DialogDescription className="text-gray-600 dark:text-gray-400">
                 Edit the subject and body before sending.
               </DialogDescription>
-            </DialogDescription>
+            </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="subject" className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
@@ -332,7 +332,9 @@ const TopicDetail = () => {
               <CardTitle className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight mb-2">
                 {topic.name}
               </CardTitle>
-              {/* Removed CardDescription as it was redundant */}
+              <CardDescription className="text-lg sm:text-xl text-gray-700 dark:text-gray-300">
+                {topic.description}
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-0 prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 mt-4">
               <MarkdownRenderer content={topic.description} />
