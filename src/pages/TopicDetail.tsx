@@ -36,8 +36,8 @@ const replacePlaceholders = (text: string, personalization: Personalization) => 
   result = result.replace(/{{city}}/g, personalization.city || '').trim();
   result = result.replace(/{{country}}/g, personalization.country || '').trim();
 
-  // Clean up empty lines left by removed placeholders
-  result = result.split('\n').filter(line => line.trim() !== '').join('\n');
+  // Removed the line that filtered out empty lines to preserve all newlines
+  // result = result.split('\n').filter(line => line.trim() !== '').join('\n');
 
   return result;
 };
