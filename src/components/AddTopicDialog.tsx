@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { showSuccess, showError } from '@/utils/toast';
 import { buildCcEmails, parseEmailList, selectPrimaryEmail } from '@/utils/email';
-import { createTopic, createGroup, createContact, createEmailTemplate } from '@/services/supabaseService';
+import { createTopic, createGroup, createContact, createEmailTemplate, linkEmailTemplateToContact } from '@/services/supabaseService';
 import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { Separator } from '@/components/ui/separator';
@@ -68,6 +68,7 @@ const contactSchema = z.object({
   // contactOrganization: z.string().optional(), // Removed for simplification
   // contactLocation: z.string().optional(), // Removed for simplification
   contactEmoji: z.string().optional(),
+  templateSourceContactIndex: z.number().int().nonnegative().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
       const emails = parseEmailList(val);
@@ -165,6 +166,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
         contacts: [{
           contactName: '',
           contactEmoji: '',
+          templateSourceContactIndex: undefined,
           contactEmail: '',
           contactPrimaryEmail: '',
           contactLanguages: ['en'],
@@ -200,7 +202,8 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
       const createdTopic = await createTopic(tempTopicData as Omit<Topic, 'id'>);
       const newTopicId = createdTopic.id;
 
-      for (const groupEntry of values.groups) {
+      for (let groupIndex = 0; groupIndex < values.groups.length; groupIndex += 1) {
+        const groupEntry = values.groups[groupIndex];
         // Create Group
         const groupData: Omit<Group, 'id'> = {
           topic_id: newTopicId, // Link to the newly created topic
@@ -209,7 +212,10 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
         };
         const createdGroup = await createGroup(groupData);
 
-        for (const contactEntry of groupEntry.contacts) {
+        const templateIdsByContactIndex = new Map<number, string[]>();
+
+        for (let contactIndex = 0; contactIndex < groupEntry.contacts.length; contactIndex += 1) {
+          const contactEntry = groupEntry.contacts[contactIndex];
           const emails = parseEmailList(contactEntry.contactEmail);
           const primaryEmail = selectPrimaryEmail(emails, contactEntry.contactPrimaryEmail);
           const ccEmails = buildCcEmails(emails, primaryEmail);
@@ -227,15 +233,41 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
           };
           const createdContact = await createContact(contactData);
 
-          // Create Email Templates for this contact
-          for (const templateEntry of contactEntry.emailTemplates) {
-            const emailTemplateData: Omit<EmailTemplate, 'id'> = {
-              contact_id: createdContact.id,
-              language: templateEntry.emailLanguage,
-              subject: templateEntry.emailSubject,
-              body: templateEntry.emailBody,
-            };
-            await createEmailTemplate(emailTemplateData);
+          const createTemplatesForContact = async (): Promise<string[]> => {
+            const createdTemplateIds: string[] = [];
+            for (const templateEntry of contactEntry.emailTemplates) {
+              const emailTemplateData: Omit<EmailTemplate, 'id'> = {
+                contact_id: createdContact.id,
+                language: templateEntry.emailLanguage,
+                subject: templateEntry.emailSubject,
+                body: templateEntry.emailBody,
+              };
+              const createdTemplate = await createEmailTemplate(emailTemplateData);
+              createdTemplateIds.push(createdTemplate.id);
+            }
+            return createdTemplateIds;
+          };
+
+          const sourceIndex = contactEntry.templateSourceContactIndex;
+          if (
+            typeof sourceIndex === 'number' &&
+            Number.isInteger(sourceIndex) &&
+            sourceIndex >= 0 &&
+            sourceIndex < contactIndex
+          ) {
+            const sourceTemplateIds = templateIdsByContactIndex.get(sourceIndex) ?? [];
+            if (sourceTemplateIds.length > 0) {
+              for (const templateId of sourceTemplateIds) {
+                await linkEmailTemplateToContact(createdContact.id, templateId);
+              }
+              templateIdsByContactIndex.set(contactIndex, sourceTemplateIds);
+            } else {
+              const createdTemplateIds = await createTemplatesForContact();
+              templateIdsByContactIndex.set(contactIndex, createdTemplateIds);
+            }
+          } else {
+            const createdTemplateIds = await createTemplatesForContact();
+            templateIdsByContactIndex.set(contactIndex, createdTemplateIds);
           }
         }
       }
@@ -456,8 +488,26 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                               groupIndex={groupIndex}
                               contactIndex={contactIndex}
                               languages={languages}
-                              removeContact={() => contactForm.setValue(`groups.${groupIndex}.contacts`, contactForm.getValues(`groups.${groupIndex}.contacts`).filter((_, i) => i !== contactIndex))}
+                              removeContact={() => {
+                                const currentContacts = contactForm.getValues(`groups.${groupIndex}.contacts`);
+                                const nextContacts = currentContacts.filter((_, index) => index !== contactIndex);
+                                const adjustedContacts = nextContacts.map((contact, index) => {
+                                  const sourceIndex = contact?.templateSourceContactIndex;
+                                  if (typeof sourceIndex !== 'number') {
+                                    return contact;
+                                  }
+                                  if (sourceIndex === contactIndex) {
+                                    return { ...contact, templateSourceContactIndex: undefined };
+                                  }
+                                  if (sourceIndex > contactIndex) {
+                                    return { ...contact, templateSourceContactIndex: sourceIndex - 1 };
+                                  }
+                                  return contact;
+                                });
+                                contactForm.setValue(`groups.${groupIndex}.contacts`, adjustedContacts);
+                              }}
                               totalContacts={contactForm.getValues(`groups.${groupIndex}.contacts`).length}
+                              enableTemplateReuse
                             />
                           ))}
                         </div>
@@ -474,6 +524,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                                 // contactOrganization: '', // Removed for simplification
                                 // contactLocation: '', // Removed for simplification
                                 contactEmoji: '',
+                                templateSourceContactIndex: undefined,
                                 contactEmail: '',
                                 contactPrimaryEmail: '',
                                 contactLanguages: ['en'],
@@ -504,6 +555,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                         // contactOrganization: '', // Removed for simplification
                         // contactLocation: '', // Removed for simplification
                         contactEmoji: '',
+                        templateSourceContactIndex: undefined,
                         contactEmail: '',
                         contactPrimaryEmail: '',
                         contactLanguages: ['en'],

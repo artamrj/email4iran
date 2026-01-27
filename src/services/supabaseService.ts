@@ -38,12 +38,30 @@ export const getContactsByGroupId = async (groupId: string): Promise<Contact[]> 
 };
 
 export const getEmailTemplatesByContactId = async (contactId: string): Promise<EmailTemplate[]> => {
+  const { data: linkData, error: linkError } = await supabase
+    .from('contact_email_templates')
+    .select('template_id')
+    .eq('contact_id', contactId)
+    .order('created_at', { ascending: true });
+  if (linkError) throw linkError;
+
+  const templateIds = (linkData ?? [])
+    .map((row) => row.template_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (templateIds.length === 0) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('email_templates')
     .select('id, contact_id, language, subject, body') // Updated column names
-    .eq('contact_id', contactId); // Updated column name
+    .in('id', templateIds);
   if (error) throw error;
-  return data;
+  const templatesById = new Map((data ?? []).map((template) => [template.id, template]));
+  return templateIds
+    .map((id) => templatesById.get(id))
+    .filter((template): template is EmailTemplate => Boolean(template));
 };
 
 // --- New functions for creating data ---
@@ -89,6 +107,35 @@ export const createContact = async (contactData: Omit<Contact, 'id'>): Promise<C
   return data;
 };
 
+export const linkEmailTemplateToContact = async (contactId: string, templateId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('contact_email_templates')
+    .upsert([{ contact_id: contactId, template_id: templateId }], {
+      onConflict: 'contact_id,template_id',
+    });
+  if (error) throw error;
+};
+
+export const setContactEmailTemplates = async (contactId: string, templateIds: string[]): Promise<void> => {
+  const { error: deleteError } = await supabase
+    .from('contact_email_templates')
+    .delete()
+    .eq('contact_id', contactId);
+  if (deleteError) throw deleteError;
+
+  if (templateIds.length === 0) return;
+
+  const rows = templateIds.map((templateId) => ({
+    contact_id: contactId,
+    template_id: templateId,
+  }));
+
+  const { error: insertError } = await supabase
+    .from('contact_email_templates')
+    .insert(rows);
+  if (insertError) throw insertError;
+};
+
 export const createEmailTemplate = async (templateData: Omit<EmailTemplate, 'id'>): Promise<EmailTemplate> => {
   const { data, error } = await supabase
     .from('email_templates')
@@ -96,6 +143,9 @@ export const createEmailTemplate = async (templateData: Omit<EmailTemplate, 'id'
     .select()
     .single();
   if (error) throw error;
+  if (templateData.contact_id && data?.id) {
+    await linkEmailTemplateToContact(templateData.contact_id, data.id);
+  }
   return data;
 };
 

@@ -30,6 +30,7 @@ import {
   getContactsByGroupId,
   getEmailTemplatesByContactId,
   getGroupsByTopicId,
+  setContactEmailTemplates,
   updateContact,
   updateEmailTemplate,
   updateGroup,
@@ -51,6 +52,7 @@ const contactSchema = z.object({
   contactId: z.string().optional(),
   contactName: z.string().min(1, { message: "Contact name is required." }),
   contactEmoji: z.string().optional(),
+  templateSourceContactIndex: z.number().int().nonnegative().optional(),
   contactEmail: z
     .string()
     .min(1, { message: "Email is required." })
@@ -115,6 +117,7 @@ const blankContact = () => ({
   contactId: undefined,
   contactName: "",
   contactEmoji: "",
+  templateSourceContactIndex: undefined,
   contactEmail: "",
   contactPrimaryEmail: "",
   contactLanguages: ["en"],
@@ -172,11 +175,25 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
     }
 
     const groups = groupsData.map((group) => {
+      const contactIdToIndex = new Map(group.contacts.map((contact, index) => [contact.id, index]));
       const contacts = group.contacts.length
         ? group.contacts.map((contact) => ({
             contactId: contact.id,
             contactName: contact.name,
             contactEmoji: contact.emoji ?? "",
+            templateSourceContactIndex: (() => {
+              if (!contact.emailTemplates.length) return undefined;
+              const ownerIds = new Set(
+                contact.emailTemplates
+                  .map((template) => template.contact_id)
+                  .filter((id): id is string => Boolean(id)),
+              );
+              if (ownerIds.size !== 1) return undefined;
+              const [ownerId] = Array.from(ownerIds);
+              if (!ownerId || ownerId === contact.id) return undefined;
+              const sourceIndex = contactIdToIndex.get(ownerId);
+              return typeof sourceIndex === "number" ? sourceIndex : undefined;
+            })(),
             contactEmail: (() => {
               if (contact.cc_emails?.length) {
                 return joinEmailList(contact.email, contact.cc_emails);
@@ -244,7 +261,10 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
           groupId = createdGroup.id;
         }
 
-        for (const contactEntry of groupEntry.contacts) {
+        const templateIdsByContactIndex = new Map<number, string[]>();
+
+        for (let contactIndex = 0; contactIndex < groupEntry.contacts.length; contactIndex += 1) {
+          const contactEntry = groupEntry.contacts[contactIndex];
           const emails = parseEmailList(contactEntry.contactEmail);
           const primaryEmail = selectPrimaryEmail(emails, contactEntry.contactPrimaryEmail);
           const ccEmails = buildCcEmails(emails, primaryEmail);
@@ -270,21 +290,49 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
             contactId = createdContact.id;
           }
 
-          for (const templateEntry of contactEntry.emailTemplates) {
-            const templatePayload = {
-              language: templateEntry.emailLanguage,
-              subject: templateEntry.emailSubject,
-              body: templateEntry.emailBody,
-            };
+          const createOrUpdateTemplates = async (): Promise<string[]> => {
+            const templateIds: string[] = [];
+            for (const templateEntry of contactEntry.emailTemplates) {
+              const templatePayload = {
+                language: templateEntry.emailLanguage,
+                subject: templateEntry.emailSubject,
+                body: templateEntry.emailBody,
+              };
 
-            if (templateEntry.templateId) {
-              await updateEmailTemplate(templateEntry.templateId, templatePayload);
-            } else {
-              await createEmailTemplate({
-                contact_id: contactId,
-                ...templatePayload,
-              });
+              if (templateEntry.templateId) {
+                await updateEmailTemplate(templateEntry.templateId, templatePayload);
+                templateIds.push(templateEntry.templateId);
+              } else {
+                const createdTemplate = await createEmailTemplate({
+                  contact_id: contactId,
+                  ...templatePayload,
+                });
+                templateIds.push(createdTemplate.id);
+              }
             }
+            return templateIds;
+          };
+
+          const sourceIndex = contactEntry.templateSourceContactIndex;
+          if (
+            typeof sourceIndex === "number" &&
+            Number.isInteger(sourceIndex) &&
+            sourceIndex >= 0 &&
+            sourceIndex < contactIndex
+          ) {
+            const sourceTemplateIds = templateIdsByContactIndex.get(sourceIndex) ?? [];
+            if (sourceTemplateIds.length > 0) {
+              await setContactEmailTemplates(contactId, sourceTemplateIds);
+              templateIdsByContactIndex.set(contactIndex, sourceTemplateIds);
+            } else {
+              const createdTemplateIds = await createOrUpdateTemplates();
+              await setContactEmailTemplates(contactId, createdTemplateIds);
+              templateIdsByContactIndex.set(contactIndex, createdTemplateIds);
+            }
+          } else {
+            const createdTemplateIds = await createOrUpdateTemplates();
+            await setContactEmailTemplates(contactId, createdTemplateIds);
+            templateIdsByContactIndex.set(contactIndex, createdTemplateIds);
           }
         }
       }
@@ -401,16 +449,27 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
                               groupIndex={groupIndex}
                               contactIndex={contactIndex}
                               languages={languages}
-                              removeContact={() =>
-                                contactForm.setValue(
-                                  `groups.${groupIndex}.contacts`,
-                                  contactForm
-                                    .getValues(`groups.${groupIndex}.contacts`)
-                                    .filter((_, index) => index !== contactIndex),
-                                )
-                              }
+                              removeContact={() => {
+                                const currentContacts = contactForm.getValues(`groups.${groupIndex}.contacts`);
+                                const nextContacts = currentContacts.filter((_, index) => index !== contactIndex);
+                                const adjustedContacts = nextContacts.map((contact, index) => {
+                                  const sourceIndex = contact?.templateSourceContactIndex;
+                                  if (typeof sourceIndex !== "number") {
+                                    return contact;
+                                  }
+                                  if (sourceIndex === contactIndex) {
+                                    return { ...contact, templateSourceContactIndex: undefined };
+                                  }
+                                  if (sourceIndex > contactIndex) {
+                                    return { ...contact, templateSourceContactIndex: sourceIndex - 1 };
+                                  }
+                                  return contact;
+                                });
+                                contactForm.setValue(`groups.${groupIndex}.contacts`, adjustedContacts);
+                              }}
                               totalContacts={contactForm.getValues(`groups.${groupIndex}.contacts`).length}
                               allowRemoveExisting={false}
+                              enableTemplateReuse
                             />
                           ))}
                         </div>

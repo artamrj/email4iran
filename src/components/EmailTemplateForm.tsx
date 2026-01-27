@@ -41,6 +41,7 @@ const contactSchema = z.object({
   // contactOrganization: z.string().optional(), // Removed for simplification
   // contactLocation: z.string().optional(), // Removed for simplification
   contactEmoji: z.string().optional(),
+  templateSourceContactIndex: z.number().int().nonnegative().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
       const emails = parseEmailList(val);
@@ -94,6 +95,7 @@ interface EmailTemplateFormProps {
   removeEmailTemplate: (index: number) => void;
   totalTemplates: number;
   allowRemoveExisting?: boolean;
+  readOnly?: boolean;
 }
 
 export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
@@ -104,6 +106,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   removeEmailTemplate,
   totalTemplates,
   allowRemoveExisting = true,
+  readOnly = false,
 }) => {
   const { control, watch, getValues, setValue } = useFormContext<ContactsFormValues>();
   const [isOpen, setIsOpen] = useState(templateIndex === 0); // Open the first template by default
@@ -114,7 +117,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   const currentLanguage = watch(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailLanguage`);
   const languageLabel = languages.find(lang => lang.value === currentLanguage)?.label || 'New Template';
   const templateId = watch(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.templateId`);
-  const canRemoveTemplate = totalTemplates > 1 && (allowRemoveExisting || !templateId);
+  const canRemoveTemplate = !readOnly && totalTemplates > 1 && (allowRemoveExisting || !templateId);
 
   const insertPlaceholder = (
     fieldPath: FieldPath<ContactsFormValues>,
@@ -202,6 +205,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                   setActiveField("subject");
                   subjectRef.current?.focus();
                 }}
+                disabled={readOnly}
               >
                 Subject
               </Button>
@@ -214,6 +218,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                   setActiveField("body");
                   bodyRef.current?.focus();
                 }}
+                disabled={readOnly}
               >
                 Body
               </Button>
@@ -234,6 +239,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                   activeField === "subject" ? subjectRef.current : bodyRef.current,
                 )
               }
+              disabled={readOnly}
             >
               {"{{name}}"}
             </Button>
@@ -251,6 +257,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                   activeField === "subject" ? subjectRef.current : bodyRef.current,
                 )
               }
+              disabled={readOnly}
             >
               {"{{city}}"}
             </Button>
@@ -268,6 +275,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                   activeField === "subject" ? subjectRef.current : bodyRef.current,
                 )
               }
+              disabled={readOnly}
             >
               {"{{country}}"}
             </Button>
@@ -280,7 +288,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">Template Language</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={readOnly}>
                   <FormControl>
                     <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
                       <SelectValue placeholder="Select template language" />
@@ -314,6 +322,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                       subjectRef.current = node;
                     }}
                     onFocus={() => setActiveField("subject")}
+                    disabled={readOnly}
                   />
                 </FormControl>
                 <p className="text-xs text-muted-foreground">
@@ -341,6 +350,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
                     bodyRef.current = node;
                   }}
                   onFocus={() => setActiveField("body")}
+                  disabled={readOnly}
                 />
               </FormControl>
               <p className="text-xs text-muted-foreground">

@@ -45,6 +45,7 @@ const contactSchema = z.object({
   // contactOrganization: z.string().optional(), // Removed for simplification
   // contactLocation: z.string().optional(), // Removed for simplification
   contactEmoji: z.string().optional(),
+  templateSourceContactIndex: z.number().int().nonnegative().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
       const emails = parseEmailList(val);
@@ -95,6 +96,7 @@ interface ContactFormProps {
   removeContact: (index: number) => void;
   totalContacts: number;
   allowRemoveExisting?: boolean;
+  enableTemplateReuse?: boolean;
 }
 
 export const ContactForm: React.FC<ContactFormProps> = ({
@@ -104,6 +106,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   removeContact,
   totalContacts,
   allowRemoveExisting = true,
+  enableTemplateReuse = false,
 }) => {
   const { control, watch, getValues, setValue } = useFormContext<z.infer<typeof contactsFormSchema>>();
   const [isOpen, setIsOpen] = useState(contactIndex === 0); // Open the first contact by default
@@ -113,14 +116,64 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     name: `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`,
   });
 
+  const templateSourcePath = `groups.${groupIndex}.contacts.${contactIndex}.templateSourceContactIndex` as const;
+  const templatesPath = `groups.${groupIndex}.contacts.${contactIndex}.emailTemplates` as const;
   const contactName = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactName`);
   const contactId = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactId`);
+  const templateSourceContactIndex = watch(templateSourcePath);
   const contactEmail = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactEmail`);
   const contactPrimaryEmail = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactPrimaryEmail`);
   const canRemoveContact = totalContacts > 1 && (allowRemoveExisting || !contactId);
   const primaryEmailPath = `groups.${groupIndex}.contacts.${contactIndex}.contactPrimaryEmail` as const;
 
   const emailOptions = useMemo(() => parseEmailList(contactEmail ?? ''), [contactEmail]);
+  const contactsInGroup = watch(`groups.${groupIndex}.contacts`);
+
+  const availableTemplateSources = useMemo(() => {
+    if (!enableTemplateReuse || !Array.isArray(contactsInGroup)) {
+      return [];
+    }
+    return contactsInGroup
+      .slice(0, contactIndex)
+      .map((contact, index) => {
+        const name =
+          contact?.contactName?.trim() ||
+          `Contact #${index + 1}`;
+        return {
+          index,
+          label: name,
+          templateCount: contact?.emailTemplates?.length ?? 0,
+        };
+      })
+      .filter((option) => option.templateCount > 0);
+  }, [contactIndex, contactsInGroup, enableTemplateReuse]);
+
+  const isTemplateLinked =
+    enableTemplateReuse &&
+    typeof templateSourceContactIndex === 'number' &&
+    Number.isInteger(templateSourceContactIndex) &&
+    templateSourceContactIndex >= 0;
+
+  const linkedSourceLabel = useMemo(() => {
+    if (!isTemplateLinked) return '';
+    const source = availableTemplateSources.find((option) => option.index === templateSourceContactIndex);
+    return source?.label ?? `Contact #${(templateSourceContactIndex ?? 0) + 1}`;
+  }, [availableTemplateSources, isTemplateLinked, templateSourceContactIndex]);
+
+  const sourceTemplates = isTemplateLinked
+    ? watch(`groups.${groupIndex}.contacts.${templateSourceContactIndex}.emailTemplates`)
+    : undefined;
+
+  useEffect(() => {
+    if (!isTemplateLinked || !Array.isArray(sourceTemplates)) return;
+    const nextTemplates = sourceTemplates.map((template) => ({
+      templateId: template?.templateId,
+      emailLanguage: template?.emailLanguage ?? 'en',
+      emailSubject: template?.emailSubject ?? '',
+      emailBody: template?.emailBody ?? '',
+    }));
+    setValue(templatesPath, nextTemplates, { shouldDirty: true, shouldTouch: true });
+  }, [isTemplateLinked, sourceTemplates, setValue, templatesPath]);
 
   useEffect(() => {
     if (emailOptions.length === 0) {
@@ -271,6 +324,51 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             </FormItem>
           )}
         />
+        {enableTemplateReuse && availableTemplateSources.length > 0 && (
+          <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+            <Label className="text-sm font-medium text-foreground">Email Templates Source</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Reuse templates from another contact so you don't re-enter the same content.
+            </p>
+            <Select
+              value={isTemplateLinked ? String(templateSourceContactIndex) : 'new'}
+              onValueChange={(value) => {
+                if (value === 'new') {
+                  setValue(templateSourcePath, undefined, { shouldDirty: true, shouldTouch: true });
+                  const currentTemplates = getValues(templatesPath) ?? [];
+                  const detachedTemplates = currentTemplates.map((template) => ({
+                    ...template,
+                    templateId: undefined,
+                  }));
+                  setValue(templatesPath, detachedTemplates, { shouldDirty: true, shouldTouch: true });
+                  return;
+                }
+                const sourceIndex = Number(value);
+                if (Number.isNaN(sourceIndex)) return;
+                setValue(templateSourcePath, sourceIndex, { shouldDirty: true, shouldTouch: true });
+              }}
+            >
+              <FormControl>
+                <SelectTrigger className="mt-2 rounded-lg border-border bg-input text-foreground">
+                  <SelectValue placeholder="Create new templates" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
+                <SelectItem value="new">Create new templates</SelectItem>
+                {availableTemplateSources.map((source) => (
+                  <SelectItem key={source.index} value={String(source.index)}>
+                    {source.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isTemplateLinked && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Templates are linked to {linkedSourceLabel}. Edit the source contact to change them.
+              </p>
+            )}
+          </div>
+        )}
         <Separator className="my-4 bg-border rounded-full" />
 
         {/* Email Templates Field Array */}
@@ -286,28 +384,31 @@ export const ContactForm: React.FC<ContactFormProps> = ({
               removeEmailTemplate={removeEmailTemplate}
               totalTemplates={emailTemplateFields.length}
               allowRemoveExisting={allowRemoveExisting}
+              readOnly={isTemplateLinked}
             />
           ))}
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            const currentTemplates = getValues(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`);
-            setValue(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`, [
-              ...currentTemplates,
-              {
-                emailLanguage: 'en',
-                emailSubject: '',
-                emailBody: '',
-              }
-            ]);
-          }}
-          className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Add Another Email Template
-        </Button>
+        {!isTemplateLinked && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const currentTemplates = getValues(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`);
+              setValue(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates`, [
+                ...currentTemplates,
+                {
+                  emailLanguage: 'en',
+                  emailSubject: '',
+                  emailBody: '',
+                }
+              ]);
+            }}
+            className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add Another Email Template
+          </Button>
+        )}
       </CollapsibleContent>
     </Collapsible>
   );
