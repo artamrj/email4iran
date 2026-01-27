@@ -9,7 +9,7 @@
     "build:cf": "next build && next-on-pages",
     "start": "next start",
     "lint": "eslint .",
-    "deploy:cf": ""
+    "deploy:cf": "wrangler pages deploy .vercel/output/static"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
