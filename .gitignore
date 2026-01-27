@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 .next
+.open-next/
+.wrangler/
+.vercel/
 *.local
 
 # Editor directories and files
