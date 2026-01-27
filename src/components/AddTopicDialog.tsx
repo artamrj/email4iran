@@ -35,8 +35,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils'; // Import cn for conditional classNames
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'; // New imports for Tooltip
 
-import { ContactForm } from './ContactForm'; // Import the new ContactForm component
+import { ContactForm } from './ContactForm';
+import { PasswordPrompt } from './PasswordPrompt'; // New import
 
 // --- Language List ---
 const languages = [
@@ -132,8 +134,11 @@ const contactsFormSchema = z.object({
 export const AddTopicDialog: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [tempTopicData, setTempTopicData] = useState<Omit<Topic, 'id'> | null>(null); // Store topic data temporarily
+  const [tempTopicData, setTempTopicData] = useState<Omit<Topic, 'id'> | null>(null);
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false); // New state
   const queryClient = useQueryClient();
+
+  const hasPasswordConfigured = !!import.meta.env.VITE_ADD_TOPIC_PASSWORD; // Check if env var is set
 
   const topicForm = useForm<z.infer<typeof topicFormSchema>>({
     resolver: zodResolver(topicFormSchema),
@@ -150,15 +155,12 @@ export const AddTopicDialog: React.FC = () => {
     defaultValues: {
       groups: [{
         groupName: '',
-        // groupDescription: '', // Removed for simplification
         contacts: [{
           contactName: '',
-          // contactOrganization: '', // Removed for simplification
-          // contactLocation: '', // Removed for simplification
           contactEmoji: '',
           contactEmail: '',
           contactLanguages: ['en'],
-          emailTemplates: [{ // Default for one email template within the first contact
+          emailTemplates: [{
             emailLanguage: 'en',
             emailSubject: '',
             emailBody: '',
@@ -174,7 +176,7 @@ export const AddTopicDialog: React.FC = () => {
   });
 
   const handleTopicSubmit = async (values: z.infer<typeof topicFormSchema>) => {
-    setTempTopicData(values); // Store topic data
+    setTempTopicData(values);
     showSuccess('Topic details saved! Now add contacts.');
     setStep(2);
   };
@@ -248,229 +250,258 @@ export const AddTopicDialog: React.FC = () => {
       topicForm.reset();
       contactForm.reset();
       setTempTopicData(null); // Clear temporary data on close
+      setIsPasswordVerified(false); // Reset password verification on close
     }
+  };
+
+  const handlePasswordSuccess = () => {
+    setIsPasswordVerified(true);
+    setStep(1); // Start at step 1 after password verification
+  };
+
+  const handlePasswordCancel = () => {
+    setIsOpen(false); // Close dialog if password prompt is cancelled
+    setIsPasswordVerified(false); // Ensure it's reset
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <Button
-        onClick={() => setIsOpen(true)}
-        variant="ghost" // Change to ghost variant
-        className="fixed top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2" // Adjusted styling
-      >
-        <Plus className="h-5 w-5" /> {/* Slightly smaller icon for text button */}
-        <span>Add New Topic</span> {/* Add text */}
-      </Button>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={() => setIsOpen(true)}
+            variant="ghost"
+            className="fixed top-4 left-4 z-50 rounded-full px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 ease-in-out flex items-center gap-2"
+            disabled={!hasPasswordConfigured} // Disable if password not configured
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add New Topic</span>
+          </Button>
+        </TooltipTrigger>
+        {!hasPasswordConfigured && (
+          <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
+            <p>Please set `VITE_ADD_TOPIC_PASSWORD` in your .env file to enable this feature.</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
       <DialogContent className="sm:max-w-[700px] rounded-xl p-6 bg-card text-card-foreground overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">
-            {step === 1 ? 'Create New Topic' : 'Add Contact Details'}
+            {!isPasswordVerified ? 'Enter Password' : (step === 1 ? 'Create New Topic' : 'Add Contact Details')}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            {step === 1
-              ? 'Fill in the details for your new advocacy topic.'
-              : 'Now, add groups, key contacts, and email templates for this topic.'}
+            {!isPasswordVerified
+              ? 'A password is required to add new topics.'
+              : (step === 1
+                ? 'Fill in the details for your new advocacy topic.'
+                : 'Now, add groups, key contacts, and email templates for this topic.')}
           </DialogDescription>
         </DialogHeader>
 
-        {step === 1 && (
-          <Form {...topicForm}>
-            <form onSubmit={topicForm.handleSubmit(handleTopicSubmit)} className="grid gap-4 py-4">
-              <FormField
-                control={topicForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Topic Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Human Rights Advocacy" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={topicForm.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Slug (URL-friendly)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="human-rights-advocacy" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={topicForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="A brief overview of the topic..." rows={4} className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={topicForm.control}
-                name="emoji"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., ✊)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="✊" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
-                  Next: Add Contacts <CheckCircle2 className="ml-2 h-4 w-4" />
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        )}
+        {!isPasswordVerified ? (
+          <PasswordPrompt onSuccess={handlePasswordSuccess} onCancel={handlePasswordCancel} />
+        ) : (
+          <>
+            {step === 1 && (
+              <Form {...topicForm}>
+                <form onSubmit={topicForm.handleSubmit(handleTopicSubmit)} className="grid gap-4 py-4">
+                  <FormField
+                    control={topicForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-foreground">Topic Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Human Rights Advocacy" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={topicForm.control}
+                    name="slug"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-foreground">Slug (URL-friendly)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="human-rights-advocacy" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={topicForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-foreground">Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="A brief overview of the topic..." rows={4} className="rounded-lg border-border bg-input text-foreground" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={topicForm.control}
+                    name="emoji"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-foreground">Emoji (e.g., ✊)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="✊" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter className="pt-4">
+                    <Button type="submit" className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
+                      Next: Add Contacts <CheckCircle2 className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            )}
 
-        {step === 2 && (
-          <Form {...contactForm}>
-            <form onSubmit={contactForm.handleSubmit(handleContactsSubmit)} className="grid gap-4 py-4">
-              {groupFields.map((groupField, groupIndex) => (
-                <Collapsible key={groupField.id} defaultOpen={groupIndex === 0} className="relative border border-border rounded-xl p-6 mb-6 bg-secondary/10">
-                  <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between cursor-pointer py-2 -mx-2 px-2 rounded-md hover:bg-secondary/20 transition-colors">
-                      <h3 className="text-xl font-bold text-foreground">
-                        Group #{groupIndex + 1}: {contactForm.watch(`groups.${groupIndex}.groupName`) || 'New Group'}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        {groupFields.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent collapsible from toggling
-                              removeGroup(groupIndex);
-                            }}
-                            className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8"
-                          >
-                            <XCircle className="h-5 w-5" />
-                            <span className="sr-only">Remove Group</span>
-                          </Button>
-                        )}
-                        <ChevronDown className={cn("h-5 w-5 transition-transform", contactForm.watch(`groups.${groupIndex}.isOpen`) ? "rotate-180" : "rotate-0")} />
-                      </div>
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="grid gap-4 pt-4">
-                    {/* Group Details */}
-                    <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">Group Details</h4>
-                    <FormField
-                      control={contactForm.control}
-                      name={`groups.${groupIndex}.groupName`}
-                      render={({ field }) => (
-                        <FormItem className="mb-2">
-                          <FormLabel className="text-sm font-medium text-foreground">Group Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Government Officials" className="rounded-lg border-border bg-input text-foreground" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Removed groupDescription field */}
-                    <Separator className="my-6 bg-border rounded-full" />
-
-                    {/* Contacts Field Array */}
-                    <h4 className="text-lg font-semibold text-foreground mb-2">Contacts in this Group</h4>
-                    <div className="grid gap-4">
-                      {contactForm.watch(`groups.${groupIndex}.contacts`)?.map((contactField, contactIndex) => (
-                        <ContactForm
-                          key={contactField.id}
-                          groupIndex={groupIndex}
-                          contactIndex={contactIndex}
-                          languages={languages}
-                          removeContact={() => contactForm.setValue(`groups.${groupIndex}.contacts`, contactForm.getValues(`groups.${groupIndex}.contacts`).filter((_, i) => i !== contactIndex))}
-                          totalContacts={contactForm.getValues(`groups.${groupIndex}.contacts`).length}
+            {step === 2 && (
+              <Form {...contactForm}>
+                <form onSubmit={contactForm.handleSubmit(handleContactsSubmit)} className="grid gap-4 py-4">
+                  {groupFields.map((groupField, groupIndex) => (
+                    <Collapsible key={groupField.id} defaultOpen={groupIndex === 0} className="relative border border-border rounded-xl p-6 mb-6 bg-secondary/10">
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between cursor-pointer py-2 -mx-2 px-2 rounded-md hover:bg-secondary/20 transition-colors">
+                          <h3 className="text-xl font-bold text-foreground">
+                            Group #{groupIndex + 1}: {contactForm.watch(`groups.${groupIndex}.groupName`) || 'New Group'}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            {groupFields.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent collapsible from toggling
+                                  removeGroup(groupIndex);
+                                }}
+                                className="text-destructive hover:bg-destructive/10 rounded-full h-8 w-8"
+                              >
+                                <XCircle className="h-5 w-5" />
+                                <span className="sr-only">Remove Group</span>
+                              </Button>
+                            )}
+                            <ChevronDown className={cn("h-5 w-5 transition-transform", contactForm.watch(`groups.${groupIndex}.isOpen`) ? "rotate-180" : "rotate-0")} />
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="grid gap-4 pt-4">
+                        {/* Group Details */}
+                        <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">Group Details</h4>
+                        <FormField
+                          control={contactForm.control}
+                          name={`groups.${groupIndex}.groupName`}
+                          render={({ field }) => (
+                            <FormItem className="mb-2">
+                              <FormLabel className="text-sm font-medium text-foreground">Group Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Government Officials" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      ))}
-                    </div>
+                        {/* Removed groupDescription field */}
+                        <Separator className="my-6 bg-border rounded-full" />
 
+                        {/* Contacts Field Array */}
+                        <h4 className="text-lg font-semibold text-foreground mb-2">Contacts in this Group</h4>
+                        <div className="grid gap-4">
+                          {contactForm.watch(`groups.${groupIndex}.contacts`)?.map((contactField, contactIndex) => (
+                            <ContactForm
+                              key={contactField.id}
+                              groupIndex={groupIndex}
+                              contactIndex={contactIndex}
+                              languages={languages}
+                              removeContact={() => contactForm.setValue(`groups.${groupIndex}.contacts`, contactForm.getValues(`groups.${groupIndex}.contacts`).filter((_, i) => i !== contactIndex))}
+                              totalContacts={contactForm.getValues(`groups.${groupIndex}.contacts`).length}
+                            />
+                          ))}
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const currentContacts = contactForm.getValues(`groups.${groupIndex}.contacts`);
+                            contactForm.setValue(`groups.${groupIndex}.contacts`, [
+                              ...currentContacts,
+                              {
+                                contactName: '',
+                                // contactOrganization: '', // Removed for simplification
+                                // contactLocation: '', // Removed for simplification
+                                contactEmoji: '',
+                                contactEmail: '',
+                                contactLanguages: ['en'],
+                                emailTemplates: [{
+                                  emailLanguage: 'en',
+                                  emailSubject: '',
+                                  emailBody: '',
+                                }],
+                              }
+                            ]);
+                          }}
+                          className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
+                        >
+                          <Plus className="mr-2 h-4 w-4" /> Add Another Contact to this Group
+                        </Button>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => appendGroup({
+                      groupName: '',
+                      // groupDescription: '', // Removed for simplification
+                      contacts: [{
+                        contactName: '',
+                        // contactOrganization: '', // Removed for simplification
+                        // contactLocation: '', // Removed for simplification
+                        contactEmoji: '',
+                        contactEmail: '',
+                        contactLanguages: ['en'],
+                        emailTemplates: [{
+                          emailLanguage: 'en',
+                          emailSubject: '',
+                          emailBody: '',
+                        }],
+                      }],
+                    })}
+                    className="w-full rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-base py-3 mt-4"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add Another Group
+                  </Button>
+
+                  <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-4">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        const currentContacts = contactForm.getValues(`groups.${groupIndex}.contacts`);
-                        contactForm.setValue(`groups.${groupIndex}.contacts`, [
-                          ...currentContacts,
-                          {
-                            contactName: '',
-                            // contactOrganization: '', // Removed for simplification
-                            // contactLocation: '', // Removed for simplification
-                            contactEmoji: '',
-                            contactEmail: '',
-                            contactLanguages: ['en'],
-                            emailTemplates: [{
-                              emailLanguage: 'en',
-                              emailSubject: '',
-                              emailBody: '',
-                            }],
-                          }
-                        ]);
-                      }}
-                      className="w-full rounded-lg border-primary text-primary hover:bg-primary/10 dark:hover:bg-primary/20 text-base py-3 mt-4"
+                      onClick={() => setStep(1)}
+                      className="w-full sm:w-auto rounded-lg border-secondary text-secondary-foreground hover:bg-secondary/80 text-base py-3"
                     >
-                      <Plus className="mr-2 h-4 w-4" /> Add Another Contact to this Group
+                      <ChevronLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => appendGroup({
-                  groupName: '',
-                  // groupDescription: '', // Removed for simplification
-                  contacts: [{
-                    contactName: '',
-                    // contactOrganization: '', // Removed for simplification
-                    // contactLocation: '', // Removed for simplification
-                    contactEmoji: '',
-                    contactEmail: '',
-                    contactLanguages: ['en'],
-                    emailTemplates: [{
-                      emailLanguage: 'en',
-                      emailSubject: '',
-                      emailBody: '',
-                    }],
-                  }],
-                })}
-                className="w-full rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-base py-3 mt-4"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Add Another Group
-              </Button>
-
-              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  className="w-full sm:w-auto rounded-lg border-secondary text-secondary-foreground hover:bg-secondary/80 text-base py-3"
-                >
-                  <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                </Button>
-                <Button type="submit" className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
-                  Add All Details <CheckCircle2 className="ml-2 h-4 w-4" />
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                    <Button type="submit" className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3">
+                      Add All Details <CheckCircle2 className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            )}
+          </>
         )}
       </DialogContent>
     </Dialog>
