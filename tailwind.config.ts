@@ -52,6 +52,20 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        iran: {
+          green: {
+            DEFAULT: "hsl(var(--iran-green))",
+            foreground: "hsl(var(--iran-green-foreground))",
+          },
+          red: {
+            DEFAULT: "hsl(var(--iran-red))",
+            foreground: "hsl(var(--iran-red-foreground))",
+          },
+          white: {
+            DEFAULT: "hsl(var(--iran-white))",
+            foreground: "hsl(var(--iran-white-foreground))",
+          },
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
