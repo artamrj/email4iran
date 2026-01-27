@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm, useFieldArray, useFormContext, Control } from 'react-hook-form'; // Import useFieldArray and Control
+import { useForm, useFieldArray, useFormContext, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, ChevronLeft, CheckCircle2, XCircle } from 'lucide-react'; // Added XCircle for remove button
+import { Plus, ChevronLeft, CheckCircle2, XCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -32,7 +32,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { createTopic, createGroup, createContact, createEmailTemplate } from '@/services/supabaseService';
 import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase';
 import { useQueryClient } from '@tanstack/react-query';
-import { Separator } from '@/components/ui/separator'; // Added Separator
+import { Separator } from '@/components/ui/separator';
 
 // --- Step 1: Topic Schema ---
 const topicFormSchema = z.object({
@@ -42,7 +42,6 @@ const topicFormSchema = z.object({
   name: z.string().min(1, { message: "Topic name is required." }),
   description: z.string().min(1, { message: "Description is required." }),
   emoji: z.string().optional(),
-  // Removed default_language
 });
 
 // --- Step 2: Nested Schemas ---
@@ -71,7 +70,7 @@ const contactsFormSchema = z.object({
 export const AddTopicDialog: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [newTopicId, setNewTopicId] = useState<string | null>(null);
+  const [tempTopicData, setTempTopicData] = useState<Omit<Topic, 'id'> | null>(null); // Store topic data temporarily
   const queryClient = useQueryClient();
 
   const topicForm = useForm<z.infer<typeof topicFormSchema>>({
@@ -90,7 +89,7 @@ export const AddTopicDialog: React.FC = () => {
       groups: [{
         groupName: '',
         groupDescription: '',
-        contacts: [{ // Default for one contact within the first group
+        contacts: [{
           contactName: '',
           contactOrganization: '',
           contactLocation: '',
@@ -105,44 +104,41 @@ export const AddTopicDialog: React.FC = () => {
     },
   });
 
-  // Outer useFieldArray for groups
   const { fields: groupFields, append: appendGroup, remove: removeGroup } = useFieldArray({
     control: contactForm.control,
     name: "groups",
   });
 
   const handleTopicSubmit = async (values: z.infer<typeof topicFormSchema>) => {
-    try {
-      const createdTopic = await createTopic(values);
-      setNewTopicId(createdTopic.id);
-      showSuccess('Topic created successfully! Now add contacts.');
-      setStep(2);
-    } catch (error) {
-      console.error('Error creating topic:', error);
-      showError('Failed to create topic. Please try again.');
-    }
+    setTempTopicData(values); // Store topic data
+    showSuccess('Topic details saved! Now add contacts.');
+    setStep(2);
   };
 
   const handleContactsSubmit = async (values: z.infer<typeof contactsFormSchema>) => {
-    if (!newTopicId) {
-      showError('Topic ID is missing. Please go back to Step 1.');
+    if (!tempTopicData) {
+      showError('Topic details are missing. Please go back to Step 1.');
       return;
     }
 
     try {
-      for (const groupEntry of values.groups) { // Iterate through groups
+      // First, create the topic in the database
+      const createdTopic = await createTopic(tempTopicData);
+      const newTopicId = createdTopic.id;
+
+      for (const groupEntry of values.groups) {
         // Create Group
         const groupData: Omit<Group, 'id'> = {
-          topic_id: newTopicId,
+          topic_id: newTopicId, // Link to the newly created topic
           name: groupEntry.groupName,
           description: groupEntry.groupDescription,
         };
         const createdGroup = await createGroup(groupData);
 
-        for (const contactEntry of groupEntry.contacts) { // Iterate through contacts within the group
+        for (const contactEntry of groupEntry.contacts) {
           // Create Contact
           const contactData: Omit<Contact, 'id'> = {
-            group_id: createdGroup.id, // Link to the created group
+            group_id: createdGroup.id,
             name: contactEntry.contactName,
             organization: contactEntry.contactOrganization || null,
             location: contactEntry.contactLocation || null,
@@ -154,7 +150,7 @@ export const AddTopicDialog: React.FC = () => {
 
           // Create Email Template
           const emailTemplateData: Omit<EmailTemplate, 'id'> = {
-            contact_id: createdContact.id, // Link to the created contact
+            contact_id: createdContact.id,
             language: contactEntry.emailLanguage,
             subject: contactEntry.emailSubject,
             body: contactEntry.emailBody,
@@ -163,7 +159,7 @@ export const AddTopicDialog: React.FC = () => {
         }
       }
 
-      showSuccess('All groups, contacts, and email templates added successfully!');
+      showSuccess('Topic, groups, contacts, and email templates added successfully!');
       queryClient.invalidateQueries({ queryKey: ['topics'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['contactsByGroups'] });
@@ -172,10 +168,10 @@ export const AddTopicDialog: React.FC = () => {
       setStep(1);
       topicForm.reset();
       contactForm.reset();
-      setNewTopicId(null);
+      setTempTopicData(null); // Clear temporary data
     } catch (error) {
-      console.error('Error adding group, contact, or email template:', error);
-      showError('Failed to add contact details. Please try again.');
+      console.error('Error adding all details:', error);
+      showError('Failed to add all details. Please try again.');
     }
   };
 
@@ -185,7 +181,7 @@ export const AddTopicDialog: React.FC = () => {
       setStep(1);
       topicForm.reset();
       contactForm.reset();
-      setNewTopicId(null);
+      setTempTopicData(null); // Clear temporary data on close
     }
   };
 
@@ -278,7 +274,7 @@ export const AddTopicDialog: React.FC = () => {
         {step === 2 && (
           <Form {...contactForm}>
             <form onSubmit={contactForm.handleSubmit(handleContactsSubmit)} className="grid gap-4 py-4">
-              {groupFields.map((groupField, groupIndex) => ( // Outer loop for groups
+              {groupFields.map((groupField, groupIndex) => (
                 <div key={groupField.id} className="relative border border-border rounded-xl p-6 mb-6 bg-secondary/10">
                   <h3 className="text-xl font-bold text-foreground mb-4">Group #{groupIndex + 1}</h3>
                   {groupFields.length > 1 && (
@@ -298,7 +294,7 @@ export const AddTopicDialog: React.FC = () => {
                   <h4 className="text-lg font-semibold text-foreground mt-2 mb-2">Group Details</h4>
                   <FormField
                     control={contactForm.control}
-                    name={`groups.${groupIndex}.groupName`} // Corrected name
+                    name={`groups.${groupIndex}.groupName`}
                     render={({ field }) => (
                       <FormItem className="mb-2">
                         <FormLabel className="text-sm font-medium text-foreground">Group Name</FormLabel>
@@ -311,7 +307,7 @@ export const AddTopicDialog: React.FC = () => {
                   />
                   <FormField
                     control={contactForm.control}
-                    name={`groups.${groupIndex}.groupDescription`} // Corrected name
+                    name={`groups.${groupIndex}.groupDescription`}
                     render={({ field }) => (
                       <FormItem className="mb-4">
                         <FormLabel className="text-sm font-medium text-foreground">Group Description (Optional)</FormLabel>
@@ -331,7 +327,6 @@ export const AddTopicDialog: React.FC = () => {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      // Append a new contact to the current group
                       const currentContacts = contactForm.getValues(`groups.${groupIndex}.contacts`);
                       contactForm.setValue(`groups.${groupIndex}.contacts`, [
                         ...currentContacts,
@@ -358,10 +353,10 @@ export const AddTopicDialog: React.FC = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => appendGroup({ // Append a new group
+                onClick={() => appendGroup({
                   groupName: '',
                   groupDescription: '',
-                  contacts: [{ // Default for one contact within the new group
+                  contacts: [{
                     contactName: '',
                     contactOrganization: '',
                     contactLocation: '',
@@ -399,7 +394,6 @@ export const AddTopicDialog: React.FC = () => {
   );
 };
 
-// Helper component for nested field array
 const ContactsFieldArray: React.FC<{ groupIndex: number; control: Control<z.infer<typeof contactsFormSchema>> }> = ({ groupIndex, control }) => {
   const { fields: contactFields, remove: removeContact } = useFieldArray({
     control,
