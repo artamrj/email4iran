@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm, useFieldArray, useFormContext, Control } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Plus, ChevronLeft, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
@@ -39,53 +39,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 import { ContactForm } from './ContactForm';
 import { PasswordPrompt } from './PasswordPrompt'; // New import
-
-// --- Language List ---
-const languages = [
-  { value: 'sq', label: 'Albanian' },
-  { value: 'ar', label: 'Arabic' },
-  { value: 'be', label: 'Belarusian' },
-  { value: 'bn', label: 'Bengali' },
-  { value: 'bs', label: 'Bosnian' },
-  { value: 'bg', label: 'Bulgarian' },
-  { value: 'ca', label: 'Catalan' },
-  { value: 'zh', label: 'Chinese (Mandarin)' },
-  { value: 'hr', label: 'Croatian' },
-  { value: 'cs', label: 'Czech' },
-  { value: 'da', label: 'Danish' },
-  { value: 'nl', label: 'Dutch' },
-  { value: 'en', label: 'English' },
-  { value: 'et', label: 'Estonian' },
-  { value: 'fa', label: 'Farsi' },
-  { value: 'fi', label: 'Finnish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'el', label: 'Greek' },
-  { value: 'hi', label: 'Hindi' },
-  { value: 'hu', label: 'Hungarian' },
-  { value: 'is', label: 'Icelandic' },
-  { value: 'ga', label: 'Irish' },
-  { value: 'it', label: 'Italian' },
-  { value: 'lv', label: 'Latvian' },
-  { value: 'lt', label: 'Lithuanian' },
-  { value: 'mk', label: 'Macedonian' },
-  { value: 'mt', label: 'Maltese' },
-  { value: 'no', label: 'Norwegian' },
-  { value: 'pl', label: 'Polish' },
-  { value: 'pt', label: 'Portuguese' },
-  { value: 'ro', label: 'Romanian' },
-  { value: 'ru', label: 'Russian' },
-  { value: 'sr', label: 'Serbian' },
-  { value: 'sk', label: 'Slovak' },
-  { value: 'sl', label: 'Slovenian' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'sv', label: 'Swedish' },
-  { value: 'tr', label: 'Turkish' },
-  { value: 'uk', label: 'Ukrainian' },
-  { value: 'ur', label: 'Urdu' },
-  { value: 'cy', label: 'Welsh' },
-  { value: 'local', label: 'Local (dynamic)' },
-].sort((a, b) => a.label.localeCompare(b.label));
+import { languages } from '@/constants/languages';
 
 // --- Step 1: Topic Schema ---
 const topicFormSchema = z.object({
@@ -101,12 +55,14 @@ type TopicFormValues = z.infer<typeof topicFormSchema>;
 
 // --- Step 2: Nested Schemas ---
 const emailTemplateSchema = z.object({
+  templateId: z.string().optional(),
   emailLanguage: z.string().min(1, { message: "Email template language is required." }),
   emailSubject: z.string().min(1, { message: "Email subject is required." }),
   emailBody: z.string().min(1, { message: "Email body is required." }),
 });
 
 const contactSchema = z.object({
+  contactId: z.string().optional(),
   contactName: z.string().min(1, { message: "Contact name is required." }),
   // contactOrganization: z.string().optional(), // Removed for simplification
   // contactLocation: z.string().optional(), // Removed for simplification
@@ -124,6 +80,7 @@ const contactSchema = z.object({
 });
 
 const groupEntrySchema = z.object({
+  groupId: z.string().optional(),
   groupName: z.string().min(1, { message: "Group name is required." }),
   // groupDescription: z.string().optional(), // Removed for simplification
   contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
@@ -156,7 +113,20 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
   const [isPasswordVerified, setIsPasswordVerified] = useState(skipPassword); // New state
   const queryClient = useQueryClient();
 
-  const hasPasswordConfigured = !!process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD; // Check if env var is set
+  const hasPasswordConfigured =
+    skipPassword ||
+    !!process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD ||
+    !!process.env.NEXT_PUBLIC_ADMIN_PASSWORD; // Check if env var is set
+  const passwordEnvKey = process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD
+    ? "NEXT_PUBLIC_ADD_TOPIC_PASSWORD"
+    : "NEXT_PUBLIC_ADMIN_PASSWORD";
+  const expectedPassword =
+    process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD ??
+    process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+  const expectedPasswords = [
+    process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD,
+    process.env.NEXT_PUBLIC_ADMIN_PASSWORD,
+  ].filter((value): value is string => Boolean(value));
 
   const topicForm = useForm<TopicFormValues>({
     resolver: zodResolver(topicFormSchema),
@@ -306,7 +276,9 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
           <TooltipTrigger asChild>{triggerButton}</TooltipTrigger>
           {!hasPasswordConfigured && (
             <TooltipContent className="rounded-lg bg-card text-card-foreground border-border shadow-md">
-              <p>Please set `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` in your .env.local file to enable this feature.</p>
+              <p>
+                Please set `NEXT_PUBLIC_ADD_TOPIC_PASSWORD` or `NEXT_PUBLIC_ADMIN_PASSWORD` in your .env.local file to enable this feature.
+              </p>
             </TooltipContent>
           )}
         </Tooltip>
@@ -328,7 +300,13 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
         </DialogHeader>
 
         {!isPasswordVerified ? (
-          <PasswordPrompt onSuccess={handlePasswordSuccess} onCancel={handlePasswordCancel} />
+          <PasswordPrompt
+            onSuccess={handlePasswordSuccess}
+            onCancel={handlePasswordCancel}
+            passwordEnvKey={passwordEnvKey}
+            expectedPassword={expectedPassword}
+            expectedPasswords={expectedPasswords}
+          />
         ) : (
           <>
             {step === 1 && (

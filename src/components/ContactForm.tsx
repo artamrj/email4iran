@@ -31,6 +31,7 @@ import { EmailTemplateForm } from './EmailTemplateForm'; // Import the new Email
 
 // Define the schema for email templates (re-using from AddTopicDialog)
 const emailTemplateSchema = z.object({
+  templateId: z.string().optional(),
   emailLanguage: z.string().min(1, { message: "Email template language is required." }),
   emailSubject: z.string().min(1, { message: "Email subject is required." }),
   emailBody: z.string().min(1, { message: "Email body is required." }),
@@ -38,6 +39,7 @@ const emailTemplateSchema = z.object({
 
 // Define the schema for contacts (re-using from AddTopicDialog)
 const contactSchema = z.object({
+  contactId: z.string().optional(),
   contactName: z.string().min(1, { message: "Contact name is required." }),
   // contactOrganization: z.string().optional(), // Removed for simplification
   // contactLocation: z.string().optional(), // Removed for simplification
@@ -56,6 +58,7 @@ const contactSchema = z.object({
 
 // Define the schema for groups (re-using from AddTopicDialog)
 const groupEntrySchema = z.object({
+  groupId: z.string().optional(),
   groupName: z.string().min(1, { message: "Group name is required." }),
   // groupDescription: z.string().optional(), // Removed for simplification
   contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
@@ -72,6 +75,7 @@ interface ContactFormProps {
   languages: { value: string; label: string }[];
   removeContact: (index: number) => void;
   totalContacts: number;
+  allowRemoveExisting?: boolean;
 }
 
 export const ContactForm: React.FC<ContactFormProps> = ({
@@ -80,6 +84,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   languages,
   removeContact,
   totalContacts,
+  allowRemoveExisting = true,
 }) => {
   const { control, watch, getValues, setValue } = useFormContext<z.infer<typeof contactsFormSchema>>();
   const [isOpen, setIsOpen] = useState(contactIndex === 0); // Open the first contact by default
@@ -90,6 +95,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   });
 
   const contactName = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactName`);
+  const contactId = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactId`);
+  const canRemoveContact = totalContacts > 1 && (allowRemoveExisting || !contactId);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative border border-border rounded-lg p-4 bg-card/50">
@@ -99,7 +106,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             Contact #{contactIndex + 1}: {contactName || 'New Contact'}
           </h4>
           <div className="flex items-center gap-2">
-            {totalContacts > 1 && (
+            {canRemoveContact && (
               <Button
                 type="button"
                 variant="ghost"
@@ -208,6 +215,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
               languages={languages}
               removeEmailTemplate={removeEmailTemplate}
               totalTemplates={emailTemplateFields.length}
+              allowRemoveExisting={allowRemoveExisting}
             />
           ))}
         </div>

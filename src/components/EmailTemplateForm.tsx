@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 
 // Define the schema for email templates (re-using from AddTopicDialog)
 const emailTemplateSchema = z.object({
+  templateId: z.string().optional(),
   emailLanguage: z.string().min(1, { message: "Email template language is required." }),
   emailSubject: z.string().min(1, { message: "Email subject is required." }),
   emailBody: z.string().min(1, { message: "Email body is required." }),
@@ -35,6 +36,7 @@ const emailTemplateSchema = z.object({
 
 // Define the schema for contacts (re-using from AddTopicDialog)
 const contactSchema = z.object({
+  contactId: z.string().optional(),
   contactName: z.string().min(1, { message: "Contact name is required." }),
   // contactOrganization: z.string().optional(), // Removed for simplification
   // contactLocation: z.string().optional(), // Removed for simplification
@@ -53,6 +55,7 @@ const contactSchema = z.object({
 
 // Define the schema for groups (re-using from AddTopicDialog)
 const groupEntrySchema = z.object({
+  groupId: z.string().optional(),
   groupName: z.string().min(1, { message: "Group name is required." }),
   // groupDescription: z.string().optional(), // Removed for simplification
   contacts: z.array(contactSchema).min(1, { message: "At least one contact is required per group." }),
@@ -70,6 +73,7 @@ interface EmailTemplateFormProps {
   languages: { value: string; label: string }[];
   removeEmailTemplate: (index: number) => void;
   totalTemplates: number;
+  allowRemoveExisting?: boolean;
 }
 
 export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
@@ -79,12 +83,15 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
   languages,
   removeEmailTemplate,
   totalTemplates,
+  allowRemoveExisting = true,
 }) => {
   const { control, watch } = useFormContext<z.infer<typeof contactsFormSchema>>();
   const [isOpen, setIsOpen] = useState(templateIndex === 0); // Open the first template by default
 
   const currentLanguage = watch(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.emailLanguage`);
   const languageLabel = languages.find(lang => lang.value === currentLanguage)?.label || 'New Template';
+  const templateId = watch(`groups.${groupIndex}.contacts.${contactIndex}.emailTemplates.${templateIndex}.templateId`);
+  const canRemoveTemplate = totalTemplates > 1 && (allowRemoveExisting || !templateId);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative border border-border rounded-lg p-4 bg-card/30">
@@ -94,7 +101,7 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
             Email Template #{templateIndex + 1}: {languageLabel}
           </h5>
           <div className="flex items-center gap-2">
-            {totalTemplates > 1 && (
+            {canRemoveTemplate && (
               <Button
                 type="button"
                 variant="ghost"

@@ -98,3 +98,53 @@ export const createEmailTemplate = async (templateData: Omit<EmailTemplate, 'id'
   if (error) throw error;
   return data;
 };
+
+export const updateGroup = async (
+  groupId: string,
+  updates: Partial<Pick<Group, 'name' | 'description'>>,
+): Promise<Group> => {
+  const { data, error } = await supabase
+    .from('groups')
+    .update(updates)
+    .eq('id', groupId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateContact = async (
+  contactId: string,
+  updates: Partial<Pick<Contact, 'name' | 'emoji' | 'email' | 'languages'>>,
+): Promise<Contact> => {
+  const { data, error } = await supabase
+    .from('contacts')
+    .update(updates)
+    .eq('id', contactId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateEmailTemplate = async (
+  templateId: string,
+  updates: Partial<Pick<EmailTemplate, 'language' | 'subject' | 'body'>>,
+): Promise<EmailTemplate> => {
+  const { data, error } = await supabase
+    .from('email_templates')
+    .update(updates)
+    .eq('id', templateId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteTopic = async (topicId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('topics')
+    .delete()
+    .eq('id', topicId);
+  if (error) throw error;
+};

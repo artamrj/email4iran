@@ -16,9 +16,22 @@ const passwordSchema = z.object({
 interface PasswordPromptProps {
   onSuccess: () => void;
   onCancel: () => void;
+  passwordEnvKey?: string;
+  expectedPassword?: string;
+  expectedPasswords?: string[];
+  passwordMatches?: { password: string; match: string }[];
+  onSuccessWithMatch?: (match: string) => void;
 }
 
-export const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, onCancel }) => {
+export const PasswordPrompt: React.FC<PasswordPromptProps> = ({
+  onSuccess,
+  onCancel,
+  passwordEnvKey = "NEXT_PUBLIC_ADD_TOPIC_PASSWORD",
+  expectedPassword,
+  expectedPasswords,
+  passwordMatches,
+  onSuccessWithMatch,
+}) => {
   const form = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
@@ -29,14 +42,39 @@ export const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, onCan
   const onSubmit = (values: z.infer<typeof passwordSchema>) => {
     // NEXT_PUBLIC_ADD_TOPIC_PASSWORD should be set as a build-time environment variable
     // in your hosting platform or locally when running `next dev`.
-    const expectedPassword = process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD;
-
-    if (!expectedPassword) {
-      showError("Password not configured. Please set NEXT_PUBLIC_ADD_TOPIC_PASSWORD as a build-time environment variable.");
+    if (passwordMatches && passwordMatches.length > 0) {
+      const matchEntry = passwordMatches.find((entry) => entry.password === values.password);
+      if (matchEntry) {
+        showSuccess("Password verified!");
+        onSuccess();
+        onSuccessWithMatch?.(matchEntry.match);
+        return;
+      }
+      showError("Incorrect password.");
+      form.setError("password", { message: "Incorrect password." });
       return;
     }
 
-    if (values.password === expectedPassword) {
+    if (passwordMatches && passwordMatches.length === 0) {
+      showError(`Password not configured. Please set ${passwordEnvKey} as a build-time environment variable.`);
+      return;
+    }
+
+    const fallbackPasswords = [
+      process.env.NEXT_PUBLIC_ADMIN_PASSWORD,
+      process.env.NEXT_PUBLIC_ADD_TOPIC_PASSWORD,
+    ].filter((value): value is string => Boolean(value));
+
+    const resolvedPasswords =
+      expectedPasswords?.filter((value): value is string => Boolean(value)) ??
+      (expectedPassword ? [expectedPassword] : fallbackPasswords);
+
+    if (resolvedPasswords.length === 0) {
+      showError(`Password not configured. Please set ${passwordEnvKey} as a build-time environment variable.`);
+      return;
+    }
+
+    if (resolvedPasswords.includes(values.password)) {
       showSuccess("Password verified!");
       onSuccess();
     } else {
