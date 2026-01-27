@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { ArrowLeft, Mail, Copy, ExternalLink } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
+import { buildCcEmails, parseEmailList, selectPrimaryEmail } from "@/utils/email";
 import {
   Dialog,
   DialogContent,
@@ -131,6 +132,34 @@ const getEmailBody = (
   };
 };
 
+const getContactEmails = (contact: Contact) => {
+  if (contact.cc_emails && contact.cc_emails.length > 0) {
+    return {
+      primaryEmail: contact.email,
+      ccEmails: contact.cc_emails,
+    };
+  }
+
+  const parsedEmails = parseEmailList(contact.email);
+  const primaryEmail = selectPrimaryEmail(parsedEmails, contact.email);
+  const ccEmails = buildCcEmails(parsedEmails, primaryEmail);
+  return { primaryEmail, ccEmails };
+};
+
+const buildMailtoLink = (
+  to: string,
+  cc: string[],
+  subject: string,
+  body: string,
+) => {
+  const params = new URLSearchParams();
+  if (cc.length) params.set("cc", cc.join(","));
+  if (subject) params.set("subject", subject);
+  if (body) params.set("body", body);
+  const query = params.toString();
+  return `mailto:${to}${query ? `?${query}` : ""}`;
+};
+
 const ContactCard: React.FC<{
   contact: Contact;
   personalization: Personalization;
@@ -162,6 +191,11 @@ const ContactCard: React.FC<{
     (requiredPlaceholders.city && !personalization.city.trim()) ||
     (requiredPlaceholders.country && !personalization.country.trim());
 
+  const { primaryEmail, ccEmails } = useMemo(
+    () => getContactEmails(contact),
+    [contact],
+  );
+
   // State for customized email content
   const [customSubject, setCustomSubject] = useState(subject);
   const [customBody, setCustomBody] = useState(body);
@@ -177,8 +211,11 @@ const ContactCard: React.FC<{
       showError("No email template available.");
       return;
     }
-    // mailto supports comma-separated emails directly
-    const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (!primaryEmail) {
+      showError("No primary email address available.");
+      return;
+    }
+    const mailtoLink = buildMailtoLink(primaryEmail, ccEmails, subject, body);
     window.location.href = mailtoLink;
   };
 
@@ -219,7 +256,8 @@ const ContactCard: React.FC<{
           {contact.location && `${contact.location}`}
         </p>
         <p className="text-xs text-muted-foreground mt-1 truncate">
-          {contact.email}
+          {primaryEmail}
+          {ccEmails.length > 0 && ` (cc: ${ccEmails.join(", ")})`}
         </p>
       </CardHeader>
       <CardContent className="p-0 flex-grow flex items-end">
@@ -300,7 +338,11 @@ const ContactCard: React.FC<{
               <Button
                 type="button"
                 onClick={() => {
-                  const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(customSubject)}&body=${encodeURIComponent(customBody)}`;
+                  if (!primaryEmail) {
+                    showError("No primary email address available.");
+                    return;
+                  }
+                  const mailtoLink = buildMailtoLink(primaryEmail, ccEmails, customSubject, customBody);
                   window.location.href = mailtoLink;
                 }}
                 className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"

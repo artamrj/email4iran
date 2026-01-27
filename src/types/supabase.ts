@@ -21,7 +21,8 @@ export interface Contact {
   organization: string | null; // New field
   location: string | null; // New field
   emoji: string; // Changed from flag
-  email: string;
+  email: string; // Primary email (To)
+  cc_emails?: string[]; // Additional emails (CC)
   languages: string[];
 }
 

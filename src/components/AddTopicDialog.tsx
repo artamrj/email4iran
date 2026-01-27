@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { showSuccess, showError } from '@/utils/toast';
+import { buildCcEmails, parseEmailList, selectPrimaryEmail } from '@/utils/email';
 import { createTopic, createGroup, createContact, createEmailTemplate } from '@/services/supabaseService';
 import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase';
 import { useQueryClient } from '@tanstack/react-query';
@@ -69,14 +70,32 @@ const contactSchema = z.object({
   contactEmoji: z.string().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
-      const emails = val.split(',').map(email => email.trim()).filter(Boolean);
+      const emails = parseEmailList(val);
       if (emails.length === 0) return false; // Must have at least one email
       return emails.every(email => z.string().email().safeParse(email).success);
     },
     { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." }
   ),
+  contactPrimaryEmail: z.string().optional(),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
   emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
+}).superRefine((data, ctx) => {
+  const emails = parseEmailList(data.contactEmail);
+  if (emails.length > 1) {
+    if (!data.contactPrimaryEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a primary email address.",
+        path: ["contactPrimaryEmail"],
+      });
+    } else if (!emails.includes(data.contactPrimaryEmail)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Primary email must be one of the listed addresses.",
+        path: ["contactPrimaryEmail"],
+      });
+    }
+  }
 });
 
 const groupEntrySchema = z.object({
@@ -147,6 +166,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
           contactName: '',
           contactEmoji: '',
           contactEmail: '',
+          contactPrimaryEmail: '',
           contactLanguages: ['en'],
           emailTemplates: [{
             emailLanguage: 'en',
@@ -190,6 +210,10 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
         const createdGroup = await createGroup(groupData);
 
         for (const contactEntry of groupEntry.contacts) {
+          const emails = parseEmailList(contactEntry.contactEmail);
+          const primaryEmail = selectPrimaryEmail(emails, contactEntry.contactPrimaryEmail);
+          const ccEmails = buildCcEmails(emails, primaryEmail);
+
           // Create Contact
           const contactData: Omit<Contact, 'id'> = {
             group_id: createdGroup.id,
@@ -197,7 +221,8 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
             organization: null, // Set to null as it's removed from form
             location: null, // Set to null as it's removed from form
             emoji: contactEntry.contactEmoji || '👤',
-            email: contactEntry.contactEmail,
+            email: primaryEmail,
+            cc_emails: ccEmails,
             languages: contactEntry.contactLanguages,
           };
           const createdContact = await createContact(contactData);
@@ -450,6 +475,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                                 // contactLocation: '', // Removed for simplification
                                 contactEmoji: '',
                                 contactEmail: '',
+                                contactPrimaryEmail: '',
                                 contactLanguages: ['en'],
                                 emailTemplates: [{
                                   emailLanguage: 'en',
@@ -479,6 +505,7 @@ export const AddTopicDialog: React.FC<AddTopicDialogProps> = ({
                         // contactLocation: '', // Removed for simplification
                         contactEmoji: '',
                         contactEmail: '',
+                        contactPrimaryEmail: '',
                         contactLanguages: ['en'],
                         emailTemplates: [{
                           emailLanguage: 'en',

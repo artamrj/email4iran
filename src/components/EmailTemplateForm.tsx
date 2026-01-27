@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { parseEmailList } from '@/utils/email';
 
 // Define the schema for email templates (re-using from AddTopicDialog)
 const emailTemplateSchema = z.object({
@@ -42,14 +43,32 @@ const contactSchema = z.object({
   contactEmoji: z.string().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
-      const emails = val.split(',').map(email => email.trim()).filter(Boolean);
+      const emails = parseEmailList(val);
       if (emails.length === 0) return false;
       return emails.every(email => z.string().email().safeParse(email).success);
     },
     { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." }
   ),
+  contactPrimaryEmail: z.string().optional(),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
   emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
+}).superRefine((data, ctx) => {
+  const emails = parseEmailList(data.contactEmail);
+  if (emails.length > 1) {
+    if (!data.contactPrimaryEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a primary email address.",
+        path: ["contactPrimaryEmail"],
+      });
+    } else if (!emails.includes(data.contactPrimaryEmail)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Primary email must be one of the listed addresses.",
+        path: ["contactPrimaryEmail"],
+      });
+    }
+  }
 });
 
 // Define the schema for groups (re-using from AddTopicDialog)

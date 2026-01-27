@@ -31,7 +31,7 @@ export const getGroupsByTopicId = async (topicId: string): Promise<Group[]> => {
 export const getContactsByGroupId = async (groupId: string): Promise<Contact[]> => { // Renamed function
   const { data, error } = await supabase
     .from('contacts') // Changed table name
-    .select('id, group_id, name, organization, location, emoji, email, languages') // Updated column names
+    .select('id, group_id, name, organization, location, emoji, email, cc_emails, languages') // Updated column names
     .eq('group_id', groupId); // Updated column name
   if (error) throw error;
   return data;
@@ -115,7 +115,7 @@ export const updateGroup = async (
 
 export const updateContact = async (
   contactId: string,
-  updates: Partial<Pick<Contact, 'name' | 'emoji' | 'email' | 'languages'>>,
+  updates: Partial<Pick<Contact, 'name' | 'emoji' | 'email' | 'cc_emails' | 'languages'>>,
 ): Promise<Contact> => {
   const { data, error } = await supabase
     .from('contacts')

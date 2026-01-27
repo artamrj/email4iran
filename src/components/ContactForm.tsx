@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
 import * as z from 'zod';
 import { Plus, ChevronDown, XCircle } from 'lucide-react';
@@ -28,6 +28,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { EmailTemplateForm } from './EmailTemplateForm'; // Import the new EmailTemplateForm
+import { parseEmailList, selectPrimaryEmail } from '@/utils/email';
 
 // Define the schema for email templates (re-using from AddTopicDialog)
 const emailTemplateSchema = z.object({
@@ -46,14 +47,32 @@ const contactSchema = z.object({
   contactEmoji: z.string().optional(),
   contactEmail: z.string().min(1, { message: "Email is required." }).refine(
     (val) => {
-      const emails = val.split(',').map(email => email.trim()).filter(Boolean);
+      const emails = parseEmailList(val);
       if (emails.length === 0) return false;
       return emails.every(email => z.string().email().safeParse(email).success);
     },
     { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." }
   ),
+  contactPrimaryEmail: z.string().optional(),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
   emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
+}).superRefine((data, ctx) => {
+  const emails = parseEmailList(data.contactEmail);
+  if (emails.length > 1) {
+    if (!data.contactPrimaryEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a primary email address.",
+        path: ["contactPrimaryEmail"],
+      });
+    } else if (!emails.includes(data.contactPrimaryEmail)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Primary email must be one of the listed addresses.",
+        path: ["contactPrimaryEmail"],
+      });
+    }
+  }
 });
 
 // Define the schema for groups (re-using from AddTopicDialog)
@@ -96,7 +115,26 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   const contactName = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactName`);
   const contactId = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactId`);
+  const contactEmail = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactEmail`);
+  const contactPrimaryEmail = watch(`groups.${groupIndex}.contacts.${contactIndex}.contactPrimaryEmail`);
   const canRemoveContact = totalContacts > 1 && (allowRemoveExisting || !contactId);
+  const primaryEmailPath = `groups.${groupIndex}.contacts.${contactIndex}.contactPrimaryEmail` as const;
+
+  const emailOptions = useMemo(() => parseEmailList(contactEmail ?? ''), [contactEmail]);
+
+  useEffect(() => {
+    if (emailOptions.length === 0) {
+      if (contactPrimaryEmail) {
+        setValue(primaryEmailPath, '', { shouldDirty: true, shouldTouch: true });
+      }
+      return;
+    }
+
+    const nextPrimary = selectPrimaryEmail(emailOptions, contactPrimaryEmail);
+    if (nextPrimary !== contactPrimaryEmail) {
+      setValue(primaryEmailPath, nextPrimary, { shouldDirty: true, shouldTouch: true });
+    }
+  }, [contactPrimaryEmail, emailOptions, primaryEmailPath, setValue]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="relative border border-border rounded-lg p-4 bg-card/50">
@@ -174,6 +212,38 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             </FormItem>
           )}
         />
+        {emailOptions.length > 1 && (
+          <FormField
+            control={control}
+            name={`groups.${groupIndex}.contacts.${contactIndex}.contactPrimaryEmail`}
+            render={({ field }) => (
+              <FormItem className="mb-4">
+                <FormLabel className="text-sm font-medium text-foreground">Primary Email (To)</FormLabel>
+                <Select
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                >
+                  <FormControl>
+                    <SelectTrigger className="rounded-lg border-border bg-input text-foreground">
+                      <SelectValue placeholder="Select primary email" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="rounded-lg bg-card text-card-foreground border-border">
+                    {emailOptions.map((email) => (
+                      <SelectItem key={email} value={email}>
+                        {email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs text-muted-foreground">
+                  Other emails will be added as CC.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <FormField
           control={control}
           name={`groups.${groupIndex}.contacts.${contactIndex}.contactLanguages`}

@@ -38,6 +38,7 @@ import { Topic, Group, Contact, EmailTemplate } from "@/types/supabase";
 import { showError, showSuccess } from "@/utils/toast";
 import { ContactForm } from "@/components/ContactForm";
 import { languages } from "@/constants/languages";
+import { buildCcEmails, joinEmailList, parseEmailList, selectPrimaryEmail } from "@/utils/email";
 
 const emailTemplateSchema = z.object({
   templateId: z.string().optional(),
@@ -55,14 +56,32 @@ const contactSchema = z.object({
     .min(1, { message: "Email is required." })
     .refine(
       (val) => {
-        const emails = val.split(",").map((email) => email.trim()).filter(Boolean);
+        const emails = parseEmailList(val);
         if (emails.length === 0) return false;
         return emails.every((email) => z.string().email().safeParse(email).success);
       },
       { message: "Invalid email format. Please enter one or more valid email addresses, separated by commas." },
     ),
+  contactPrimaryEmail: z.string().optional(),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
   emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
+}).superRefine((data, ctx) => {
+  const emails = parseEmailList(data.contactEmail);
+  if (emails.length > 1) {
+    if (!data.contactPrimaryEmail) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a primary email address.",
+        path: ["contactPrimaryEmail"],
+      });
+    } else if (!emails.includes(data.contactPrimaryEmail)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Primary email must be one of the listed addresses.",
+        path: ["contactPrimaryEmail"],
+      });
+    }
+  }
 });
 
 const groupEntrySchema = z.object({
@@ -97,6 +116,7 @@ const blankContact = () => ({
   contactName: "",
   contactEmoji: "",
   contactEmail: "",
+  contactPrimaryEmail: "",
   contactLanguages: ["en"],
   emailTemplates: [blankEmailTemplate()],
 });
@@ -157,7 +177,22 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
             contactId: contact.id,
             contactName: contact.name,
             contactEmoji: contact.emoji ?? "",
-            contactEmail: contact.email,
+            contactEmail: (() => {
+              if (contact.cc_emails?.length) {
+                return joinEmailList(contact.email, contact.cc_emails);
+              }
+              const parsedEmails = parseEmailList(contact.email);
+              const primaryEmail = parsedEmails[0] ?? contact.email;
+              const ccEmails = buildCcEmails(parsedEmails, primaryEmail);
+              return joinEmailList(primaryEmail, ccEmails);
+            })(),
+            contactPrimaryEmail: (() => {
+              if (contact.cc_emails?.length) {
+                return contact.email;
+              }
+              const parsedEmails = parseEmailList(contact.email);
+              return parsedEmails[0] ?? contact.email;
+            })(),
             contactLanguages: contact.languages?.length ? contact.languages : ["en"],
             emailTemplates: contact.emailTemplates.length
               ? contact.emailTemplates.map((template) => ({
@@ -210,11 +245,16 @@ export const EditTopicDialog: React.FC<EditTopicDialogProps> = ({ topic }) => {
         }
 
         for (const contactEntry of groupEntry.contacts) {
+          const emails = parseEmailList(contactEntry.contactEmail);
+          const primaryEmail = selectPrimaryEmail(emails, contactEntry.contactPrimaryEmail);
+          const ccEmails = buildCcEmails(emails, primaryEmail);
+
           let contactId = contactEntry.contactId;
           const contactPayload = {
             name: contactEntry.contactName,
             emoji: contactEntry.contactEmoji || "👤",
-            email: contactEntry.contactEmail,
+            email: primaryEmail,
+            cc_emails: ccEmails,
             languages: contactEntry.contactLanguages,
           };
 
