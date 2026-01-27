@@ -1,4 +1,8 @@
-name = "email4iran"
-compatibility_date = "2025-01-01"
+name = "email4iran" # This should match your worker's name
+main = "src/index.ts" # This is often a placeholder for Workers Sites, as Wrangler generates the actual worker script
+compatibility_date = "2024-01-01" # Ensure this is a recent date
 
-assets = { directory = "./dist" }
+[site]
+bucket = "./dist" # Points to your build output directory
+entry-point = "workers-site" # Standard entry point for generated Workers Sites
+fallback = "index.html" # Explicitly tells the Worker to serve index.html for unmatched routes
