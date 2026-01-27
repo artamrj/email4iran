@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cf": "next build && next-on-pages",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "deploy:cf": "wrangler pages deploy .vercel/output/static"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -63,6 +65,7 @@
     "next": "latest"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.9.0",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
