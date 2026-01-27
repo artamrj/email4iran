@@ -483,7 +483,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
-  const dir = locale === "fa" ? "rtl" : "ltr";
+  const dir: LanguageContextValue["dir"] = locale === "fa" ? "rtl" : "ltr";
   const t = useMemo(() => createTranslator(locale), [locale]);
 
   useEffect(() => {
