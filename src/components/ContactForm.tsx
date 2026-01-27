@@ -158,7 +158,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             <FormItem className="mb-4">
               <FormLabel className="text-sm font-medium text-foreground">Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="contact@example.com, another@example.com" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                <Input type="text" placeholder="contact@example.com, another@example.com" className="rounded-lg border-border bg-input text-foreground" {...field} />
               </FormControl>
               <FormDescription className="text-xs text-muted-foreground">
                 Enter multiple emails separated by commas.
