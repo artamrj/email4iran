@@ -121,7 +121,8 @@ export const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({
     placeholder: string,
     element: HTMLInputElement | HTMLTextAreaElement | null,
   ) => {
-    const currentValue = getValues(fieldPath) ?? '';
+    const rawValue = getValues(fieldPath);
+    const currentValue = typeof rawValue === 'string' ? rawValue : '';
 
     if (!element) {
       const trimmed = currentValue.trim();
