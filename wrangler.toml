@@ -1,4 +1,4 @@
-name = "dyad-generated-app" # Replace with a unique name for your Cloudflare Pages project
+name = 'email4iran'
 compatibility_date = "2024-01-01" # Use a recent date, e.g., "2024-01-01" or today's date
 
 [site]
