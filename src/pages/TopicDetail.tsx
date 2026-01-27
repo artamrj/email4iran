@@ -86,6 +86,16 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
     return getEmailBody(templates, personalization, contact.languages);
   }, [templates, personalization, contact.languages]);
 
+  // State for customized email content
+  const [customSubject, setCustomSubject] = useState(subject);
+  const [customBody, setCustomBody] = useState(body);
+
+  // Update customSubject and customBody when subject or body change (e.g., personalization changes)
+  useEffect(() => {
+    setCustomSubject(subject);
+    setCustomBody(body);
+  }, [subject, body]);
+
   const handleSendRecommendedEmail = () => {
     if (!subject || !body) {
       showError('No email template available.');
@@ -96,12 +106,12 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
     window.location.href = mailtoLink;
   };
 
-  const handleCopyEmail = () => {
-    if (!subject || !body) {
-      showError('No email template available to copy.');
+  const handleCopyEmail = (contentSubject: string, contentBody: string) => {
+    if (!contentSubject || !contentBody) {
+      showError('No email content available to copy.');
       return;
     }
-    const emailContent = `Subject: ${subject}\n\n${body}`;
+    const emailContent = `Subject: ${contentSubject}\n\n${contentBody}`;
     navigator.clipboard.writeText(emailContent)
       .then(() => showSuccess('Email content copied to clipboard!'))
       .catch(() => showError('Failed to copy email content.'));
@@ -147,7 +157,12 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
         >
           <Mail className="mr-2 h-4 w-4" /> Send Recommended
         </Button>
-        <Dialog>
+        <Dialog onOpenChange={(open) => {
+          if (open) {
+            setCustomSubject(subject);
+            setCustomBody(body);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button variant="outline" className="w-full sm:w-auto flex-grow rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-sm py-2 px-3">
               <ExternalLink className="mr-2 h-4 w-4" /> Customize
@@ -165,8 +180,8 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                 <Label htmlFor="subject" className="text-sm font-medium text-foreground">Subject</Label>
                 <Input
                   id="subject"
-                  value={subject}
-                  onChange={(e) => { /* In a real app, you might manage this state */ }}
+                  value={customSubject}
+                  onChange={(e) => setCustomSubject(e.target.value)}
                   className="rounded-lg border-border bg-input text-foreground"
                 />
               </div>
@@ -174,8 +189,8 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
                 <Label htmlFor="body" className="text-sm font-medium text-foreground">Body</Label>
                 <Textarea
                   id="body"
-                  value={body}
-                  onChange={(e) => { /* In a real app, you might manage this state */ }}
+                  value={customBody}
+                  onChange={(e) => setCustomBody(e.target.value)}
                   rows={10}
                   className="rounded-lg border-border bg-input text-foreground"
                 />
@@ -185,20 +200,20 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
               <Button
                 type="button"
                 onClick={() => {
-                  const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                  const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(customSubject)}&body=${encodeURIComponent(customBody)}`;
                   window.location.href = mailtoLink;
                 }}
                 className="w-full sm:w-auto rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3"
-                disabled={!subject || !body}
+                disabled={!customSubject || !customBody}
               >
                 <Mail className="mr-2 h-4 w-4" /> Open Email App
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleCopyEmail}
+                onClick={() => handleCopyEmail(customSubject, customBody)}
                 className="w-full sm:w-auto rounded-lg border-accent text-accent hover:bg-accent/10 dark:hover:bg-accent/20 text-sm py-2 px-3"
-                disabled={!subject || !body}
+                disabled={!customSubject || !customBody}
               >
                 <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
               </Button>
