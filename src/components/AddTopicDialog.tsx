@@ -124,22 +124,32 @@ export const AddTopicDialog: React.FC = () => {
     }
 
     try {
+      const createdGroups = new Map<string, Group>(); // Map to store groups created in this session
+
       for (const contactEntry of values.contacts) {
-        // Create Group
-        const groupData: Omit<Group, 'id'> = {
-          topic_id: newTopicId,
-          name: contactEntry.groupName,
-          description: contactEntry.groupDescription,
-        };
-        const createdGroup = await createGroup(groupData);
+        let currentGroup: Group;
+
+        // Check if a group with this name already exists for this topic in this submission
+        if (createdGroups.has(contactEntry.groupName)) {
+          currentGroup = createdGroups.get(contactEntry.groupName)!;
+        } else {
+          // Create Group if it doesn't exist yet for this submission
+          const groupData: Omit<Group, 'id'> = {
+            topic_id: newTopicId,
+            name: contactEntry.groupName,
+            description: contactEntry.groupDescription,
+          };
+          currentGroup = await createGroup(groupData);
+          createdGroups.set(contactEntry.groupName, currentGroup); // Store the created group
+        }
 
         // Create Contact
         const contactData: Omit<Contact, 'id'> = {
-          group_id: createdGroup.id,
+          group_id: currentGroup.id, // Use the ID of the (newly created or existing) group
           name: contactEntry.contactName,
           organization: contactEntry.contactOrganization || null,
           location: contactEntry.contactLocation || null,
-          emoji: contactEntry.contactEmoji || '👤', // Default emoji if none provided
+          emoji: contactEntry.contactEmoji || '👤',
           email: contactEntry.contactEmail,
           languages: contactEntry.contactLanguages,
         };
