@@ -87,8 +87,6 @@ const languages = [
   { value: 'local', label: 'Local (dynamic)' },
 ].sort((a, b) => a.label.localeCompare(b.label));
 
-type TopicFormValues = Omit<Topic, 'id'>;
-
 // --- Step 1: Topic Schema ---
 const topicFormSchema = z.object({
   slug: z.string().min(1, { message: "Slug is required." }).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
@@ -97,7 +95,9 @@ const topicFormSchema = z.object({
   name: z.string().min(1, { message: "Topic name is required." }),
   description: z.string().min(1, { message: "Description is required." }),
   emoji: z.string().optional(),
-}) satisfies z.ZodType<TopicFormValues>;
+});
+
+type TopicFormValues = z.infer<typeof topicFormSchema>;
 
 // --- Step 2: Nested Schemas ---
 const emailTemplateSchema = z.object({
@@ -136,7 +136,7 @@ const contactsFormSchema = z.object({
 export const AddTopicDialog: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [tempTopicData, setTempTopicData] = useState<Omit<Topic, 'id'> | null>(null);
+  const [tempTopicData, setTempTopicData] = useState<TopicFormValues | null>(null);
   const [isPasswordVerified, setIsPasswordVerified] = useState(false); // New state
   const queryClient = useQueryClient();
 
@@ -191,7 +191,7 @@ export const AddTopicDialog: React.FC = () => {
 
     try {
       // First, create the topic in the database
-      const createdTopic = await createTopic(tempTopicData);
+      const createdTopic = await createTopic(tempTopicData as Omit<Topic, 'id'>);
       const newTopicId = createdTopic.id;
 
       for (const groupEntry of values.groups) {
@@ -199,7 +199,7 @@ export const AddTopicDialog: React.FC = () => {
         const groupData: Omit<Group, 'id'> = {
           topic_id: newTopicId, // Link to the newly created topic
           name: groupEntry.groupName,
-          // description: groupEntry.groupDescription, // Removed for simplification
+          description: '', // Required by type; description field removed from form
         };
         const createdGroup = await createGroup(groupData);
 
@@ -394,7 +394,7 @@ export const AddTopicDialog: React.FC = () => {
                                 <span className="sr-only">Remove Group</span>
                               </Button>
                             )}
-                            <ChevronDown className={cn("h-5 w-5 transition-transform", contactForm.watch(`groups.${groupIndex}.isOpen`) ? "rotate-180" : "rotate-0")} />
+                            <ChevronDown className="h-5 w-5 transition-transform rotate-0" />
                           </div>
                         </div>
                       </CollapsibleTrigger>
@@ -422,7 +422,7 @@ export const AddTopicDialog: React.FC = () => {
                         <div className="grid gap-4">
                           {contactForm.watch(`groups.${groupIndex}.contacts`)?.map((contactField, contactIndex) => (
                             <ContactForm
-                              key={contactField.id}
+                              key={`${groupIndex}-${contactIndex}`}
                               groupIndex={groupIndex}
                               contactIndex={contactIndex}
                               languages={languages}
