@@ -103,7 +103,14 @@ const contactSchema = z.object({
   contactOrganization: z.string().optional(),
   contactLocation: z.string().optional(),
   contactEmoji: z.string().optional(),
-  contactEmail: z.string().email({ message: "Invalid email address." }),
+  contactEmail: z.string().min(1, { message: "Email is required." }).refine(
+    (val) => {
+      const emails = val.split(',').map(email => email.trim()).filter(Boolean);
+      if (emails.length === 0) return false; // Must have at least one email
+      return emails.every(email => z.string().email().safeParse(email).success);
+    },
+    { message: "Invalid email format. Please use comma-separated valid email addresses." }
+  ),
   contactLanguages: z.array(z.string()).min(1, { message: "At least one language is required." }),
   emailTemplates: z.array(emailTemplateSchema).min(1, { message: "At least one email template is required." }),
 });
@@ -543,8 +550,11 @@ const ContactsFieldArray: React.FC<{ groupIndex: number; languages: { value: str
               <FormItem className="mb-4">
                 <FormLabel className="text-sm font-medium text-foreground">Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="contact@example.com" className="rounded-lg border-border bg-input text-foreground" {...field} />
+                  <Input type="email" placeholder="contact@example.com, another@example.com" className="rounded-lg border-border bg-input text-foreground" {...field} />
                 </FormControl>
+                <FormDescription className="text-xs text-muted-foreground">
+                  Enter multiple emails separated by commas.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

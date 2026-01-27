@@ -90,6 +90,7 @@ const ContactCard: React.FC<{ contact: Contact; personalization: Personalization
       showError('No email template available.');
       return;
     }
+    // mailto supports comma-separated emails directly
     const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoLink;
   };
@@ -259,7 +260,13 @@ const TopicDetail = () => {
     const allEmails = new Set<string>();
     for (const groupId in contactsByGroup) {
       contactsByGroup[groupId].forEach(contact => {
-        allEmails.add(contact.email);
+        // Split the email string by comma and add each trimmed email to the set
+        contact.email.split(',').forEach(email => {
+          const trimmedEmail = email.trim();
+          if (trimmedEmail) {
+            allEmails.add(trimmedEmail);
+          }
+        });
       });
     }
 
