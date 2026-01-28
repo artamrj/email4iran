@@ -1,3 +1,5 @@
+Sitemap: https://irani.email/sitemap.xml
+
 User-agent: Googlebot
 Allow: /
 
