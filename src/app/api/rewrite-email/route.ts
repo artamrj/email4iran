@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { Mistral } from "@mistralai/mistralai";
 
-const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
+export const runtime = "edge"; // faster cold starts on Vercel etc.
+
 const DEFAULT_MODEL = "mistral-small-latest";
 const DEFAULT_TIMEOUT_MS = 3500;
 const MAX_SUBJECT_LENGTH = 200;
@@ -11,6 +13,10 @@ type RewriteRequest = {
   body: string;
   language?: string;
 };
+
+const mistral = new Mistral({
+  apiKey: process.env.MISTRAL_API_KEY ?? "",
+});
 
 const extractJson = (value: string) => {
   try {
@@ -52,6 +58,22 @@ const buildPrompt = (subject: string, body: string, languageHint?: string) => {
   ].join("\n");
 };
 
+// generic timeout helper for SDK calls
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error("TIMEOUT")), ms);
+    promise
+      .then((res) => {
+        clearTimeout(id);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(id);
+        reject(err);
+      });
+  });
+};
+
 export async function POST(request: Request) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) {
@@ -70,7 +92,8 @@ export async function POST(request: Request) {
 
   const subject = typeof payload.subject === "string" ? payload.subject.trim() : "";
   const body = typeof payload.body === "string" ? payload.body.trim() : "";
-  const language = typeof payload.language === "string" ? payload.language.trim() : undefined;
+  const language =
+    typeof payload.language === "string" ? payload.language.trim() : undefined;
 
   if (!subject || !body) {
     return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
@@ -79,23 +102,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "CONTENT_TOO_LONG" }, { status: 400 });
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   const model = process.env.MISTRAL_MODEL ?? DEFAULT_MODEL;
 
   try {
-    const response = await fetch(MISTRAL_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
+    const completion = await withTimeout(
+      mistral.chat.complete({
         model,
         temperature: 0.4,
-        max_tokens: Math.min(1200, Math.max(200, Math.ceil(body.length / 3))),
-        response_format: { type: "json_object" },
+        maxTokens: Math.min(1200, Math.max(200, Math.ceil(body.length / 3))),
+        responseFormat: { type: "json_object" }, // SDK uses camelCase
         messages: [
           {
             role: "system",
@@ -108,20 +123,19 @@ export async function POST(request: Request) {
           },
         ],
       }),
-      signal: controller.signal,
-    });
+      DEFAULT_TIMEOUT_MS,
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Mistral rewrite error:", response.status, errorText);
-      return NextResponse.json({ error: "AI_REQUEST_FAILED" }, { status: 502 });
-    }
+    const content = completion.choices?.[0]?.message?.content;
 
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    const contentText = Array.isArray(content) ? content.join("") : content;
+    const contentText =
+      typeof content === "string"
+        ? content
+        : Array.isArray(content)
+        ? content.join("")
+        : "";
 
-    if (typeof contentText !== "string") {
+    if (typeof contentText !== "string" || !contentText) {
       return NextResponse.json({ error: "INVALID_AI_RESPONSE" }, { status: 502 });
     }
 
@@ -140,12 +154,10 @@ export async function POST(request: Request) {
       body: rewrittenBody,
     });
   } catch (error) {
-    if ((error as Error).name === "AbortError") {
+    if (error instanceof Error && error.message === "TIMEOUT") {
       return NextResponse.json({ error: "AI_TIMEOUT" }, { status: 504 });
     }
     console.error("Rewrite email failed:", error);
     return NextResponse.json({ error: "AI_REQUEST_FAILED" }, { status: 502 });
-  } finally {
-    clearTimeout(timeout);
   }
 }
