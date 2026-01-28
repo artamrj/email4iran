@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { getTopics } from "@/services/supabaseService";
 import {
   LANGUAGE_HREFLANG,
@@ -48,7 +49,7 @@ export async function GET() {
   ${urlsXml}
 </urlset>`;
 
-  return new Response(xml, {
+  return new NextResponse(xml, {
     headers: {
       "Content-Type": "application/xml",
       "Cache-Control": "public, max-age=3600",
