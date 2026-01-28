@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-// ❌ Do NOT import the SDK here
-// import { Mistral } from "@mistralai/mistralai";
-
-// export const runtime = "edge"; // optional: let Next decide; safer for now
+export const runtime = "edge";
 
 const DEFAULT_MODEL = "mistral-small-latest";
 const DEFAULT_TIMEOUT_MS = 8000;
