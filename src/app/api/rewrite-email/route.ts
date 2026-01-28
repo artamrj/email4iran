@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { Mistral } from "@mistralai/mistralai";
 
-export const runtime = "edge"; // faster cold starts on Vercel etc.
+// ❌ Do NOT import the SDK here
+// import { Mistral } from "@mistralai/mistralai";
+
+// export const runtime = "edge"; // optional: let Next decide; safer for now
 
 const DEFAULT_MODEL = "mistral-small-latest";
 const DEFAULT_TIMEOUT_MS = 8000;
@@ -16,10 +18,6 @@ type RewriteRequest = {
   language?: string;
   timeoutMs?: number;
 };
-
-const mistral = new Mistral({
-  apiKey: process.env.MISTRAL_API_KEY ?? "",
-});
 
 const extractJson = (value: string) => {
   try {
@@ -61,7 +59,7 @@ const buildPrompt = (subject: string, body: string, languageHint?: string) => {
   ].join("\n");
 };
 
-// generic timeout helper for SDK calls
+// generic timeout helper for async calls
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
     const id = setTimeout(() => reject(new Error("TIMEOUT")), ms);
@@ -93,8 +91,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
-  const subject = typeof payload.subject === "string" ? payload.subject.trim() : "";
-  const body = typeof payload.body === "string" ? payload.body.trim() : "";
+  const subject =
+    typeof payload.subject === "string" ? payload.subject.trim() : "";
+  const body =
+    typeof payload.body === "string" ? payload.body.trim() : "";
   const language =
     typeof payload.language === "string" ? payload.language.trim() : undefined;
 
@@ -117,30 +117,54 @@ export async function POST(request: Request) {
   }
 
   const model = process.env.MISTRAL_MODEL ?? DEFAULT_MODEL;
+  const prompt = buildPrompt(subject, body, language);
 
   try {
-    const completion = await withTimeout(
-      mistral.chat.complete({
-        model,
-        temperature: 0.4,
-        maxTokens: Math.min(1200, Math.max(200, Math.ceil(body.length / 3))),
-        responseFormat: { type: "json_object" }, // SDK uses camelCase
-        messages: [
-          {
-            role: "system",
-            content:
-              "You rewrite emails without changing meaning. Output only JSON with subject and body.",
-          },
-          {
-            role: "user",
-            content: buildPrompt(subject, body, language),
-          },
-        ],
+    const mistralRes = await withTimeout(
+      fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          max_tokens: Math.min(
+            1200,
+            Math.max(200, Math.ceil(body.length / 3)),
+          ),
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content:
+                "You rewrite emails without changing meaning. Output only JSON with subject and body.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+        }),
       }),
       timeoutMs,
     );
 
-    const content = completion.choices?.[0]?.message?.content;
+    if (!mistralRes.ok) {
+      const text = await mistralRes.text();
+      console.error("Mistral API error:", mistralRes.status, text);
+      return NextResponse.json(
+        { error: "AI_REQUEST_FAILED", status: mistralRes.status },
+        { status: 502 },
+      );
+    }
+
+    const data = (await mistralRes.json()) as any;
+    const content =
+      data?.choices?.[0]?.message?.content ??
+      data?.choices?.[0]?.delta?.content ??
+      "";
 
     const contentText =
       typeof content === "string"
@@ -149,8 +173,11 @@ export async function POST(request: Request) {
         ? content.join("")
         : "";
 
-    if (typeof contentText !== "string" || !contentText) {
-      return NextResponse.json({ error: "INVALID_AI_RESPONSE" }, { status: 502 });
+    if (!contentText) {
+      return NextResponse.json(
+        { error: "INVALID_AI_RESPONSE" },
+        { status: 502 },
+      );
     }
 
     const parsed = extractJson(contentText);
@@ -160,7 +187,10 @@ export async function POST(request: Request) {
       typeof parsed?.body === "string" ? parsed.body.trim() : "";
 
     if (!rewrittenSubject || !rewrittenBody) {
-      return NextResponse.json({ error: "INVALID_AI_RESPONSE" }, { status: 502 });
+      return NextResponse.json(
+        { error: "INVALID_AI_RESPONSE" },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({
