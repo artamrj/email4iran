@@ -4,7 +4,9 @@ import { Mistral } from "@mistralai/mistralai";
 export const runtime = "edge"; // faster cold starts on Vercel etc.
 
 const DEFAULT_MODEL = "mistral-small-latest";
-const DEFAULT_TIMEOUT_MS = 3500;
+const DEFAULT_TIMEOUT_MS = 8000;
+const MIN_TIMEOUT_MS = 2000;
+const MAX_TIMEOUT_MS = 15000;
 const MAX_SUBJECT_LENGTH = 200;
 const MAX_BODY_LENGTH = 6000;
 
@@ -12,6 +14,7 @@ type RewriteRequest = {
   subject: string;
   body: string;
   language?: string;
+  timeoutMs?: number;
 };
 
 const mistral = new Mistral({
@@ -95,6 +98,17 @@ export async function POST(request: Request) {
   const language =
     typeof payload.language === "string" ? payload.language.trim() : undefined;
 
+  const normalizeTimeoutMs = (value?: number) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return undefined;
+    }
+    const rounded = Math.round(value);
+    return Math.max(MIN_TIMEOUT_MS, Math.min(MAX_TIMEOUT_MS, rounded));
+  };
+
+  const requestedTimeoutMs = normalizeTimeoutMs(payload.timeoutMs);
+  const timeoutMs = requestedTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+
   if (!subject || !body) {
     return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
   }
@@ -123,7 +137,7 @@ export async function POST(request: Request) {
           },
         ],
       }),
-      DEFAULT_TIMEOUT_MS,
+      timeoutMs,
     );
 
     const content = completion.choices?.[0]?.message?.content;

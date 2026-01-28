@@ -10,7 +10,7 @@ export type RewriteEmailResult = {
   body: string;
 };
 
-const DEFAULT_TIMEOUT_MS = 4000;
+const DEFAULT_TIMEOUT_MS = 8000;
 
 export const rewriteEmail = async (
   payload: RewriteEmailPayload,
@@ -30,6 +30,7 @@ export const rewriteEmail = async (
         subject: payload.subject,
         body: payload.body,
         language: payload.language,
+        timeoutMs,
       }),
       signal: controller.signal,
     });
