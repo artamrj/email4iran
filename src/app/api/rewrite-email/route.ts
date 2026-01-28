@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Mistral } from "@mistralai/mistralai";
 
 export const runtime = "edge"; // faster cold starts on Vercel etc.
 
@@ -8,7 +9,6 @@ const MIN_TIMEOUT_MS = 2000;
 const MAX_TIMEOUT_MS = 15000;
 const MAX_SUBJECT_LENGTH = 200;
 const MAX_BODY_LENGTH = 6000;
-const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 
 type RewriteRequest = {
   subject: string;
@@ -16,6 +16,10 @@ type RewriteRequest = {
   language?: string;
   timeoutMs?: number;
 };
+
+const mistral = new Mistral({
+  apiKey: process.env.MISTRAL_API_KEY ?? "",
+});
 
 const extractJson = (value: string) => {
   try {
@@ -57,70 +61,10 @@ const buildPrompt = (subject: string, body: string, languageHint?: string) => {
   ].join("\n");
 };
 
-const SYSTEM_MESSAGE =
-  "You rewrite emails without changing meaning. Output only JSON with subject and body.";
-
-const buildMessages = (
-  subject: string,
-  body: string,
-  languageHint?: string,
-) => [
-  {
-    role: "system",
-    content: SYSTEM_MESSAGE,
-  },
-  {
-    role: "user",
-    content: buildPrompt(subject, body, languageHint),
-  },
-];
-
-const callMistralChatCompletion = async (params: {
-  apiKey: string;
-  model: string;
-  temperature: number;
-  maxTokens: number;
-  messages: { role: string; content: string }[];
-  signal?: AbortSignal;
-}) => {
-  const response = await fetch(MISTRAL_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${params.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: params.model,
-      temperature: params.temperature,
-      max_tokens: params.maxTokens,
-      response_format: { type: "json_object" },
-      messages: params.messages,
-    }),
-    signal: params.signal,
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Mistral API error: ${response.status}${message ? ` ${message}` : ""}`,
-    );
-  }
-
-  return response.json();
-};
-
 // generic timeout helper for SDK calls
-const withTimeout = <T>(
-  promise: Promise<T>,
-  ms: number,
-  onTimeout?: () => void,
-): Promise<T> => {
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
-    const id = setTimeout(() => {
-      onTimeout?.();
-      reject(new Error("TIMEOUT"));
-    }, ms);
+    const id = setTimeout(() => reject(new Error("TIMEOUT")), ms);
     promise
       .then((res) => {
         clearTimeout(id);
@@ -175,19 +119,25 @@ export async function POST(request: Request) {
   const model = process.env.MISTRAL_MODEL ?? DEFAULT_MODEL;
 
   try {
-    const controller = new AbortController();
-    const maxTokens = Math.min(1200, Math.max(200, Math.ceil(body.length / 3)));
     const completion = await withTimeout(
-      callMistralChatCompletion({
-        apiKey,
+      mistral.chat.complete({
         model,
         temperature: 0.4,
-        maxTokens,
-        messages: buildMessages(subject, body, language),
-        signal: controller.signal,
+        maxTokens: Math.min(1200, Math.max(200, Math.ceil(body.length / 3))),
+        responseFormat: { type: "json_object" }, // SDK uses camelCase
+        messages: [
+          {
+            role: "system",
+            content:
+              "You rewrite emails without changing meaning. Output only JSON with subject and body.",
+          },
+          {
+            role: "user",
+            content: buildPrompt(subject, body, language),
+          },
+        ],
       }),
       timeoutMs,
-      () => controller.abort(),
     );
 
     const content = completion.choices?.[0]?.message?.content;
