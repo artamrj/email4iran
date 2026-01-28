@@ -22,10 +22,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowLeft, Mail, Copy, ExternalLink } from "lucide-react";
-import { showSuccess, showError } from "@/utils/toast";
+import { ArrowLeft, Mail, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { showSuccess, showError, showLoading, dismissToast } from "@/utils/toast";
 import { buildCcEmails, parseEmailList, selectPrimaryEmail } from "@/utils/email";
 import { useTranslation } from "@/lib/i18n";
+import { rewriteEmail } from "@/services/emailRewriteService";
 import {
   Dialog,
   DialogContent,
@@ -208,6 +209,7 @@ const ContactCard: React.FC<{
   // State for customized email content
   const [customSubject, setCustomSubject] = useState(subject);
   const [customBody, setCustomBody] = useState(body);
+  const [isRewriting, setIsRewriting] = useState(false);
 
   // Update customSubject and customBody when subject or body change (e.g., personalization changes)
   useEffect(() => {
@@ -215,7 +217,7 @@ const ContactCard: React.FC<{
     setCustomBody(body);
   }, [subject, body]);
 
-  const handleSendRecommendedEmail = () => {
+  const handleSendRecommendedEmail = async () => {
     if (!subject || !body) {
       showError(t("noEmailTemplateAvailable"));
       return;
@@ -224,8 +226,37 @@ const ContactCard: React.FC<{
       showError(t("noPrimaryEmailAvailable"));
       return;
     }
-    const mailtoLink = buildMailtoLink(primaryEmail, ccEmails, subject, body);
-    window.location.href = mailtoLink;
+    if (isRewriting) return;
+
+    setIsRewriting(true);
+    const loadingToastId = showLoading(t("rewritingEmail"));
+
+    try {
+      const rewriteResult = await rewriteEmail({
+        subject,
+        body,
+        language: selectedTemplate?.language ?? contact.languages?.[0],
+      });
+
+      if (!rewriteResult.rewritten) {
+        showError(t("rewriteFailedFallback"));
+      }
+
+      const mailtoLink = buildMailtoLink(
+        primaryEmail,
+        ccEmails,
+        rewriteResult.subject,
+        rewriteResult.body,
+      );
+      window.location.href = mailtoLink;
+    } catch {
+      showError(t("rewriteFailedFallback"));
+      const mailtoLink = buildMailtoLink(primaryEmail, ccEmails, subject, body);
+      window.location.href = mailtoLink;
+    } finally {
+      dismissToast(loadingToastId);
+      setIsRewriting(false);
+    }
   };
 
   const handleCopyEmail = (contentSubject: string, contentBody: string) => {
@@ -316,9 +347,18 @@ const ContactCard: React.FC<{
         <Button
           onClick={handleSendRecommendedEmail}
           className="w-full min-w-0 flex-1 rounded-lg bg-primary text-primary-foreground text-sm py-2 px-3 hover:bg-primary/90"
-          disabled={!subject || !body || isMissingRequiredField}
+          disabled={!subject || !body || isMissingRequiredField || isRewriting}
         >
-          <Mail className="mr-2 h-4 w-4" /> {t("sendEmail")}
+          {isRewriting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+              {t("rewritingEmailShort")}
+            </>
+          ) : (
+            <>
+              <Mail className="mr-2 h-4 w-4" /> {t("sendEmail")}
+            </>
+          )}
         </Button>
         <Dialog
           onOpenChange={(open) => {
