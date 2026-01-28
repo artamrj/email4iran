@@ -76,6 +76,7 @@ const translations = {
     ccLabel: "CC",
     languagesLabel: "Languages",
     sendEmail: "Send Email",
+    rewritingEmail: "Rewriting email...",
     customize: "Customize",
     customizeEmail: "Customize Email",
     customizeEmailDescription: "Edit the subject and body before sending.",
@@ -83,6 +84,8 @@ const translations = {
     bodyLabel: "Body",
     openEmailApp: "Open Email App",
     copyToClipboard: "Copy to Clipboard",
+    aiRewriteFailedUsingTemplate:
+      "AI rewrite failed or timed out. Sending the original template.",
     back: "Back",
     backToTopics: "Back to Topics",
     personalizeYourMessage: "Personalize Your Message",
@@ -274,6 +277,7 @@ const translations = {
     ccLabel: "CC",
     languagesLabel: "زبان ها",
     sendEmail: "ارسال ایمیل",
+    rewritingEmail: "در حال بازنویسی ایمیل...",
     customize: "سفارشی سازی",
     customizeEmail: "سفارشی سازی ایمیل",
     customizeEmailDescription: "قبل از ارسال، موضوع و متن ایمیل را ویرایش کنید.",
@@ -281,6 +285,8 @@ const translations = {
     bodyLabel: "متن",
     openEmailApp: "باز کردن برنامه ایمیل",
     copyToClipboard: "کپی در کلیپ برد",
+    aiRewriteFailedUsingTemplate:
+      "بازنویسی هوش مصنوعی ناموفق بود یا زمان بر شد. ارسال قالب اصلی.",
     back: "بازگشت",
     backToTopics: "بازگشت به موضوعات",
     personalizeYourMessage: "شخصی سازی پیام",
