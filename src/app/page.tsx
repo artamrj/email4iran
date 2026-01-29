@@ -40,7 +40,7 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow">
-          <p className="text-base text-foreground mb-4 line-clamp-3">
+          <p className="text-base text-foreground mb-4 line-clamp-2">
             {topic.description}
           </p>
         </CardContent>
@@ -84,7 +84,7 @@ const FeaturedTopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
                 <h2 className="text-2xl font-extrabold text-primary sm:text-3xl">
                   {topic.name}
                 </h2>
-                <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+                <p className="mt-3 text-base text-muted-foreground sm:text-lg line-clamp-2">
                   {topic.description}
                 </p>
               </div>
