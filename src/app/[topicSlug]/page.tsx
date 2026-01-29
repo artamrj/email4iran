@@ -690,7 +690,7 @@ const TopicDetail = () => {
                           name: e.target.value,
                         })
                       }
-                      placeholder="John Doe"
+                      placeholder="Korosh Javan"
                       className="rounded-lg border-border bg-input text-foreground"
                     />
                   </div>
