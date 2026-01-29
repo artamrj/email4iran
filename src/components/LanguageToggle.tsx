@@ -9,7 +9,9 @@ export const LanguageToggle = () => {
   const { locale, setLocale, t } = useTranslation();
   const nextLocale = locale === "en" ? "fa" : "en";
   const nextLabel =
-    nextLocale === "fa" ? t("languagePersian") : t("languageEnglish");
+    nextLocale === "fa"
+      ? t("languagePersianLabel")
+      : t("languageEnglishLabel");
 
   return (
     <Button
