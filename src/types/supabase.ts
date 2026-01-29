@@ -5,6 +5,7 @@ export interface Topic {
   description: string; // Changed from shortDescription and longDescription
   emoji?: string; // Added new field
   is_active?: boolean; // Control visibility in the app
+  featured_order?: number | null; // 1 or 2 for homepage spotlight
 }
 
 export interface Group { // Renamed from Category

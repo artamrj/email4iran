@@ -57,6 +57,50 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
   );
 };
 
+const FeaturedTopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
+  const { t } = useTranslation();
+  const featuredLabel =
+    typeof topic.featured_order === "number"
+      ? t("featuredBadge", { slot: topic.featured_order })
+      : t("featuredTopicLabel");
+
+  return (
+    <Link href={`/${topic.slug}`} className="block w-full">
+      <Card className="relative w-full overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-card to-secondary/10 shadow-lg transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="pointer-events-none absolute -left-10 -top-16 h-32 w-32 rounded-full bg-primary/10" />
+        <div className="pointer-events-none absolute -bottom-20 right-6 h-40 w-40 rounded-full bg-secondary/20" />
+        <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex-1">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+              {featuredLabel}
+            </div>
+            <div className="flex items-start gap-4">
+              {topic.emoji && (
+                <div className="rounded-[18px] bg-emerald-50/80 px-3 py-2 shadow-inner shadow-emerald-200/40">
+                  <span className="text-3xl leading-tight">{topic.emoji}</span>
+                </div>
+              )}
+              <div>
+                <h2 className="text-2xl font-extrabold text-primary sm:text-3xl">
+                  {topic.name}
+                </h2>
+                <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+                  {topic.description}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <span className="inline-flex items-center justify-center rounded-full bg-destructive px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-destructive-foreground transition duration-200 ease-out hover:bg-destructive/90">
+              {t("getStarted")}
+            </span>
+          </div>
+        </div>
+      </Card>
+    </Link>
+  );
+};
+
 const Index = () => {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const { t, locale } = useTranslation();
@@ -65,13 +109,31 @@ const Index = () => {
     queryFn: getTopics,
   });
 
-  const activeTopics = useMemo(() => {
-    const filtered = topics?.filter((topic) => topic.is_active !== false) ?? [];
+  const activeTopics = useMemo(
+    () => topics?.filter((topic) => topic.is_active !== false) ?? [],
+    [topics],
+  );
+
+  const featuredTopics = useMemo(
+    () =>
+      activeTopics
+        .filter((topic) => typeof topic.featured_order === "number")
+        .sort(
+          (a, b) =>
+            (a.featured_order ?? 0) - (b.featured_order ?? 0),
+        ),
+    [activeTopics],
+  );
+
+  const regularTopics = useMemo(() => {
+    const filtered = activeTopics.filter(
+      (topic) => typeof topic.featured_order !== "number",
+    );
     if (sortOrder === "oldest") {
       return [...filtered].reverse();
     }
     return filtered;
-  }, [topics, sortOrder]);
+  }, [activeTopics, sortOrder]);
 
   if (isError) {
     return (
@@ -121,20 +183,6 @@ const Index = () => {
             </div>
           </div>
         </div>
-        <div className="flex justify-center mb-8">
-          <button
-            type="button"
-            onClick={() =>
-              setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"))
-            }
-            className="inline-flex items-center justify-center rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-secondary"
-          >
-            {sortOrder === "newest"
-              ? t("sortOldestToNewest")
-              : t("sortNewestToOldest")}
-          </button>
-        </div>
-
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
@@ -153,12 +201,47 @@ const Index = () => {
               </Card>
             ))}
           </div>
-        ) : activeTopics.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {activeTopics.map((topic) => (
-              <TopicCard key={topic.id} topic={topic} />
-            ))}
-          </div>
+        ) : featuredTopics.length || regularTopics.length ? (
+          <>
+            {featuredTopics.length ? (
+              <div className="mb-10">
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                  {t("featuredTopics")}
+                </h2>
+                <div className="grid gap-6">
+                  {featuredTopics.map((topic) => (
+                    <FeaturedTopicCard key={topic.id} topic={topic} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {regularTopics.length ? (
+              <div className="flex justify-center mb-8">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSortOrder((prev) =>
+                      prev === "newest" ? "oldest" : "newest",
+                    )
+                  }
+                  className="inline-flex items-center justify-center rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-secondary"
+                >
+                  {sortOrder === "newest"
+                    ? t("sortOldestToNewest")
+                    : t("sortNewestToOldest")}
+                </button>
+              </div>
+            ) : null}
+
+            {regularTopics.length ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {regularTopics.map((topic) => (
+                  <TopicCard key={topic.id} topic={topic} />
+                ))}
+              </div>
+            ) : null}
+          </>
         ) : (
           <div className="text-center text-muted-foreground py-12">
             {t("noActiveTopics")}

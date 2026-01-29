@@ -4,7 +4,7 @@ import { Topic, Group, Contact, EmailTemplate } from '@/types/supabase'; // Upda
 export const getTopics = async (): Promise<Topic[]> => {
   const { data, error } = await supabase
     .from('topics')
-    .select('id, slug, name, description, emoji, is_active'); // Removed default_language
+    .select('id, slug, name, description, emoji, is_active, featured_order'); // Removed default_language
   if (error) throw error;
   return data;
 };
@@ -12,7 +12,7 @@ export const getTopics = async (): Promise<Topic[]> => {
 export const getTopicBySlug = async (slug: string): Promise<Topic | null> => {
   const { data, error } = await supabase
     .from('topics')
-    .select('id, slug, name, description, emoji, is_active') // Removed default_language
+    .select('id, slug, name, description, emoji, is_active, featured_order') // Removed default_language
     .eq('slug', slug)
     .single();
   if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "No rows found"
@@ -85,6 +85,25 @@ export const updateTopicActive = async (topicId: string, isActive: boolean): Pro
     .single();
   if (error) throw error;
   return data;
+};
+
+export const setTopicFeaturedOrder = async (
+  slot: 1 | 2,
+  topicId: string | null,
+): Promise<void> => {
+  const { error: clearError } = await supabase
+    .from('topics')
+    .update({ featured_order: null })
+    .eq('featured_order', slot);
+  if (clearError) throw clearError;
+
+  if (!topicId) return;
+
+  const { error: setError } = await supabase
+    .from('topics')
+    .update({ featured_order: slot })
+    .eq('id', topicId);
+  if (setError) throw setError;
 };
 
 export const createGroup = async (groupData: Omit<Group, 'id'>): Promise<Group> => {

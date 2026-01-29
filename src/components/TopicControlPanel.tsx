@@ -4,7 +4,12 @@ import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings, Trash2 } from "lucide-react";
 
-import { deleteTopic, getTopics, updateTopicActive } from "@/services/supabaseService";
+import {
+  deleteTopic,
+  getTopics,
+  setTopicFeaturedOrder,
+  updateTopicActive,
+} from "@/services/supabaseService";
 import { Topic } from "@/types/supabase";
 import { AddTopicDialog } from "@/components/AddTopicDialog";
 import { EditTopicDialog } from "@/components/EditTopicDialog";
@@ -22,6 +27,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -82,7 +95,29 @@ export const TopicControlPanel: React.FC = () => {
     },
   });
 
+  const featuredMutation = useMutation({
+    mutationFn: ({ slot, topicId }: { slot: 1 | 2; topicId: string | null }) =>
+      setTopicFeaturedOrder(slot, topicId),
+    onSuccess: () => {
+      showSuccess(t("featuredTopicsUpdated"));
+      queryClient.invalidateQueries({ queryKey: ["topics"] });
+      queryClient.invalidateQueries({ queryKey: ["topics", "admin"] });
+    },
+    onError: (error) => {
+      console.error("Failed to update featured topics:", error);
+      showError(t("failedUpdateFeaturedTopics"));
+    },
+  });
+
   const topicsList = useMemo(() => topics ?? [], [topics]);
+  const featuredSlotOne = useMemo(
+    () => topicsList.find((topic) => topic.featured_order === 1) ?? null,
+    [topicsList],
+  );
+  const featuredSlotTwo = useMemo(
+    () => topicsList.find((topic) => topic.featured_order === 2) ?? null,
+    [topicsList],
+  );
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -100,6 +135,14 @@ export const TopicControlPanel: React.FC = () => {
 
   const isDeletingTopic = (topicId: string) =>
     deleteMutation.isPending && deleteMutation.variables === topicId;
+
+  const handleFeaturedChange = (slot: 1 | 2, value: string) => {
+    if (!isAdmin) return;
+    const current = slot === 1 ? featuredSlotOne?.id : featuredSlotTwo?.id;
+    const normalized = value === "none" ? null : value;
+    if ((current ?? null) === normalized) return;
+    featuredMutation.mutate({ slot, topicId: normalized });
+  };
 
   const handleDelete = (topic: Topic) => {
     if (!isAdmin) return;
@@ -185,6 +228,75 @@ export const TopicControlPanel: React.FC = () => {
               />
             </div>
 
+            {isAdmin && (
+              <div className="rounded-lg border border-border bg-secondary/10 p-4">
+                <div className="mb-3">
+                  <h4 className="text-base font-semibold text-foreground">
+                    {t("featuredTopics")}
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    {t("featuredTopicsDescription")}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {t("featuredSlotPrimary")}
+                    </span>
+                    <Select
+                      value={featuredSlotOne?.id ?? "none"}
+                      onValueChange={(value) => handleFeaturedChange(1, value)}
+                      disabled={featuredMutation.isPending || isLoading || isError}
+                    >
+                      <SelectTrigger className="rounded-lg border-border bg-background">
+                        <SelectValue placeholder={t("featuredSelectPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t("featuredNone")}</SelectItem>
+                        <SelectSeparator />
+                        {topicsList.map((topic) => (
+                          <SelectItem key={topic.id} value={topic.id}>
+                            {topic.emoji ? `${topic.emoji} ` : ""}
+                            {topic.name}
+                            {topic.is_active === false
+                              ? ` (${t("inactiveStatus")})`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {t("featuredSlotSecondary")}
+                    </span>
+                    <Select
+                      value={featuredSlotTwo?.id ?? "none"}
+                      onValueChange={(value) => handleFeaturedChange(2, value)}
+                      disabled={featuredMutation.isPending || isLoading || isError}
+                    >
+                      <SelectTrigger className="rounded-lg border-border bg-background">
+                        <SelectValue placeholder={t("featuredSelectPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t("featuredNone")}</SelectItem>
+                        <SelectSeparator />
+                        {topicsList.map((topic) => (
+                          <SelectItem key={topic.id} value={topic.id}>
+                            {topic.emoji ? `${topic.emoji} ` : ""}
+                            {topic.name}
+                            {topic.is_active === false
+                              ? ` (${t("inactiveStatus")})`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <>
               <Separator className="bg-border rounded-full" />
 
@@ -221,9 +333,18 @@ export const TopicControlPanel: React.FC = () => {
                             </span>
                           )}
                           <div>
-                            <p className="text-base font-semibold text-foreground">
-                              {topic.name}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-base font-semibold text-foreground">
+                                {topic.name}
+                              </p>
+                              {typeof topic.featured_order === "number" && (
+                                <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                                  {t("featuredBadge", {
+                                    slot: topic.featured_order,
+                                  })}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">/{topic.slug}</p>
                           </div>
                         </div>

@@ -34,6 +34,18 @@ const translations = {
       "Add new topics. Editing existing topics requires the admin password.",
     manageTopics: "Manage Topics",
     manageVisibility: "Manage Visibility",
+    featuredTopics: "Featured Topics",
+    featuredTopicsDescription:
+      "Choose up to two topics to highlight on the homepage.",
+    featuredSlotPrimary: "Spotlight 1",
+    featuredSlotSecondary: "Spotlight 2",
+    featuredSelectPlaceholder: "Select a topic",
+    featuredNone: "None",
+    featuredTopicsUpdated: "Featured topics updated.",
+    failedUpdateFeaturedTopics:
+      "Failed to update featured topics. Please try again.",
+    featuredBadge: "Featured #{{slot}}",
+    featuredTopicLabel: "Featured Topic",
     newTopicsActiveByDefault:
       "New topics are active by default. Toggle a switch to deactivate old topics.",
     toggleTopicsActiveInactive:
@@ -234,6 +246,18 @@ const translations = {
       "موضوعات جدید را اضافه کنید. ویرایش موضوعات موجود به گذرواژه مدیر نیاز دارد.",
     manageTopics: "مدیریت موضوعات",
     manageVisibility: "مدیریت نمایش",
+    featuredTopics: "موضوعات ویژه",
+    featuredTopicsDescription:
+      "تا دو موضوع را برای نمایش در صفحه اصلی انتخاب کنید.",
+    featuredSlotPrimary: "ویژه ۱",
+    featuredSlotSecondary: "ویژه ۲",
+    featuredSelectPlaceholder: "یک موضوع انتخاب کنید",
+    featuredNone: "هیچ کدام",
+    featuredTopicsUpdated: "موضوعات ویژه به روزرسانی شد.",
+    failedUpdateFeaturedTopics:
+      "به روزرسانی موضوعات ویژه ناموفق بود. دوباره تلاش کنید.",
+    featuredBadge: "ویژه #{{slot}}",
+    featuredTopicLabel: "موضوع ویژه",
     newTopicsActiveByDefault:
       "موضوعات جدید به صورت پیش فرض فعال هستند. برای غیرفعال کردن موضوعات قدیمی، کلید را تغییر دهید.",
     toggleTopicsActiveInactive:
